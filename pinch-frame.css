@@ -1,0 +1,14 @@
+:is(pinch-frame) {
+  touch-action: none;
+  display: block;
+  overflow: auto;
+}
+
+:is(pinch-frame > :first-child) {
+  display: block;
+  box-sizing: content-box;
+  width: max-content;
+  height: max-content;
+  margin: auto;
+  transform-origin: 0 0;
+}

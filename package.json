@@ -1,0 +1,22 @@
+{
+  "name": "pinch-frame",
+  "version": "0.0.0",
+  "description": "",
+  "main": "pinch-frame.js",
+  "types": "pinch-frame.d.ts",
+  "prettier": {
+    "printWidth": 140,
+    "endOfLine": "lf",
+    "singleQuote": true,
+    "trailingComma": "all"
+  },
+  "scripts": {
+    "start": "esbuild --serve=0.0.0.0:8000 --servedir=. pinch-frame.ts",
+    "build": "tsc -p ."
+  },
+  "devDependencies": {
+    "esbuild": "^0.14.21",
+    "prettier": "^2.5.1",
+    "typescript": "^4.5.5"
+  }
+}
