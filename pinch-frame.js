@@ -62,17 +62,22 @@ class PinchFrame extends HTMLElement {
             }, { passive: false });
         }
     }
+    get minScale() {
+        const value = +this.getAttribute('min-scale');
+        return value > 0 ? value : 1;
+    }
+    get maxScale() {
+        const value = +this.getAttribute('max-scale');
+        return value > 0 ? value : 100;
+    }
     #zoom(scaleRatio, centerClientX, centerClientY) {
-        if (scaleRatio === 1) {
-            return;
-        }
         const content = this.firstElementChild;
-        if (!(content instanceof HTMLElement || content instanceof SVGElement)) {
+        if (scaleRatio === 1 || !(content instanceof HTMLElement || content instanceof SVGElement)) {
             return;
         }
         const contentStyle = getComputedStyle(content);
         const matrix = new DOMMatrix(contentStyle.transform);
-        const scale = Math.min(Math.max(matrix.a * scaleRatio, 0.1), 10);
+        const scale = Math.min(Math.max(matrix.a * scaleRatio, this.minScale), this.maxScale);
         if (scale === matrix.a) {
             return;
         }
