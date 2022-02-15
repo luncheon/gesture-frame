@@ -15,7 +15,7 @@ const averageBy = <T>(items: ArrayLike<T>, selector: (item: T) => number) => {
 class PinchFrame extends HTMLElement {
   constructor() {
     super();
-    {
+    if (typeof ontouchend === 'undefined') {
       let scaleRatio = 1;
       let clientX = 0;
       let clientY = 0;
@@ -34,8 +34,14 @@ class PinchFrame extends HTMLElement {
           scaleRatio = 1;
         });
       });
-    }
-    {
+      this.addEventListener('pointerdown', (event) => (event.currentTarget as typeof this).setPointerCapture(event.pointerId));
+      this.addEventListener('pointermove', (event) => {
+        if (event.buttons === 1) {
+          event.preventDefault();
+          this.scrollBy(-event.movementX, -event.movementY);
+        }
+      });
+    } else {
       let previousPoint: TouchPoint = { x: NaN, y: NaN, d: 0 };
       let points: TouchPoint[] = [];
       let animationHandle: number | undefined;
@@ -111,10 +117,9 @@ class PinchFrame extends HTMLElement {
     const top = Math.max(0, Math.round(frameClientRect.y - contentClientRect.y));
     content.style.paddingRight = `${Math.max(0, frameClientRect.right - contentClientRect.right)}px`;
     content.style.marginLeft = `${left}px`;
-    this.scrollLeft = left;
     content.style.paddingBottom = `${Math.max(0, frameClientRect.bottom - contentClientRect.bottom)}px`;
     content.style.marginTop = `${top}px`;
-    this.scrollTop = top;
+    this.scrollTo(left, top);
   }
 }
 

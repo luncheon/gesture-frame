@@ -2,6 +2,11 @@
   touch-action: none;
   display: block;
   overflow: auto;
+  cursor: grab;
+}
+
+:is(pinch-frame:active) {
+  cursor: grabbing;
 }
 
 :is(pinch-frame > :first-child) {
