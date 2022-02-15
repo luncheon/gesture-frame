@@ -4,13 +4,18 @@ interface TouchPoint {
   readonly d: number;
 }
 
-const averageBy = <T>(items: ArrayLike<T>, selector: (item: T) => number) => {
+const sumBy = <T>(items: ArrayLike<T>, selector: (item: T) => number) => {
   let sum = 0;
   for (let i = 0; i < items.length; i++) {
     sum += selector(items[i]!);
   }
-  return sum / items.length;
+  return sum;
 };
+
+const averageBy = <T>(items: ArrayLike<T>, selector: (item: T) => number) =>
+  items.length === 1 ? selector(items[0]!) : sumBy(items, selector) / items.length;
+
+const roundToNatural = (value: number) => (value <= 0 ? 0 : Math.round(value));
 
 class PinchFrame extends HTMLElement {
   constructor() {
@@ -42,7 +47,7 @@ class PinchFrame extends HTMLElement {
         }
       });
     } else {
-      let previousPoint: TouchPoint = { x: NaN, y: NaN, d: 0 };
+      let previousPoint: TouchPoint = { x: 0, y: 0, d: 0 };
       let points: TouchPoint[] = [];
       let animationHandle: number | undefined;
       const calculatePoint = ({ touches }: TouchEvent): TouchPoint => ({
@@ -71,8 +76,7 @@ class PinchFrame extends HTMLElement {
             const y = averageBy(points, (p) => p.y);
             const d = previousPoint.d && averageBy(points, (p) => p.d);
             d && this.#zoom(d / previousPoint.d, x, y);
-            this.scrollLeft += previousPoint.x - x;
-            this.scrollTop += previousPoint.y - y;
+            this.scrollBy(previousPoint.x - x, previousPoint.y - y);
             points = [];
             previousPoint = { x, y, d };
           });
@@ -113,11 +117,11 @@ class PinchFrame extends HTMLElement {
 
     const frameClientRect = this.getBoundingClientRect();
     const contentClientRect = content.getBoundingClientRect();
-    const left = Math.max(0, Math.round(frameClientRect.x - contentClientRect.x));
-    const top = Math.max(0, Math.round(frameClientRect.y - contentClientRect.y));
-    content.style.paddingRight = `${Math.max(0, frameClientRect.right - contentClientRect.right)}px`;
+    const left = roundToNatural(-matrix.e) || roundToNatural(frameClientRect.x - contentClientRect.x);
+    const top = roundToNatural(-matrix.f) || roundToNatural(frameClientRect.y - contentClientRect.y);
+    left && (content.style.paddingRight = `${roundToNatural(frameClientRect.right - contentClientRect.right)}px`);
     content.style.marginLeft = `${left}px`;
-    content.style.paddingBottom = `${Math.max(0, frameClientRect.bottom - contentClientRect.bottom)}px`;
+    top && (content.style.paddingBottom = `${roundToNatural(frameClientRect.bottom - contentClientRect.bottom)}px`);
     content.style.marginTop = `${top}px`;
     this.scrollTo(left, top);
   }
