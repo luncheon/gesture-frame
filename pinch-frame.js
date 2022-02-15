@@ -1,4 +1,11 @@
 "use strict";
+const averageBy = (items, selector) => {
+    let sum = 0;
+    for (let i = 0; i < items.length; i++) {
+        sum += selector(items[i]);
+    }
+    return sum / items.length;
+};
 class PinchFrame extends HTMLElement {
     constructor() {
         super();
@@ -6,6 +13,7 @@ class PinchFrame extends HTMLElement {
             let scaleRatio = 1;
             let clientX = 0;
             let clientY = 0;
+            // @ts-ignore https://github.com/microsoft/TypeScript/issues/44802
             let animationHandle;
             this.addEventListener('wheel', (event) => {
                 if (!event.ctrlKey) {
@@ -14,26 +22,22 @@ class PinchFrame extends HTMLElement {
                 event.preventDefault();
                 scaleRatio *= 0.98 ** event.deltaY;
                 ({ clientX, clientY } = event);
-                animationHandle ??
-                    (animationHandle = requestAnimationFrame(() => {
-                        animationHandle = undefined;
-                        this.#zoom(scaleRatio, clientX, clientY);
-                        scaleRatio = 1;
-                    }));
+                animationHandle ??= requestAnimationFrame(() => {
+                    animationHandle = undefined;
+                    this.#zoom(scaleRatio, clientX, clientY);
+                    scaleRatio = 1;
+                });
             });
         }
         {
             let previousPoint = { x: NaN, y: NaN, d: 0 };
             let points = [];
             let animationHandle;
-            const calculatePoint = (event) => {
-                const touches = [...event.touches];
-                return {
-                    x: touches.reduce((x, touch) => x + touch.clientX, 0) / touches.length,
-                    y: touches.reduce((y, touch) => y + touch.clientY, 0) / touches.length,
-                    d: touches.length > 1 ? Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY) : 0,
-                };
-            };
+            const calculatePoint = ({ touches }) => ({
+                x: averageBy(touches, (touch) => touch.clientX),
+                y: averageBy(touches, (touch) => touch.clientY),
+                d: touches.length > 1 ? Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY) : 0,
+            });
             const onTouchStartEnd = (event) => {
                 if (animationHandle !== undefined) {
                     cancelAnimationFrame(animationHandle);
@@ -47,18 +51,17 @@ class PinchFrame extends HTMLElement {
             this.addEventListener('touchmove', (event) => {
                 event.preventDefault();
                 points.push(calculatePoint(event));
-                animationHandle ??
-                    (animationHandle = requestAnimationFrame(() => {
-                        animationHandle = undefined;
-                        const x = points.reduce((x, p) => x + p.x, 0) / points.length;
-                        const y = points.reduce((y, p) => y + p.y, 0) / points.length;
-                        const d = previousPoint.d && points.reduce((d, p) => d + p.d, 0) / points.length;
-                        d && this.#zoom(d / previousPoint.d, x, y);
-                        this.scrollLeft += previousPoint.x - x;
-                        this.scrollTop += previousPoint.y - y;
-                        points = [];
-                        previousPoint = { x, y, d };
-                    }));
+                animationHandle ??= requestAnimationFrame(() => {
+                    animationHandle = undefined;
+                    const x = averageBy(points, (p) => p.x);
+                    const y = averageBy(points, (p) => p.y);
+                    const d = previousPoint.d && averageBy(points, (p) => p.d);
+                    d && this.#zoom(d / previousPoint.d, x, y);
+                    this.scrollLeft += previousPoint.x - x;
+                    this.scrollTop += previousPoint.y - y;
+                    points = [];
+                    previousPoint = { x, y, d };
+                });
             }, { passive: false });
         }
     }
