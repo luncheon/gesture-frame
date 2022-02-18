@@ -13,8 +13,10 @@ class PinchFrame extends HTMLElement {
         super();
         if (typeof ontouchend === 'undefined') {
             let scaleRatio = 1;
-            let clientX = 0;
-            let clientY = 0;
+            let wheelClientX = 0;
+            let wheelClientY = 0;
+            let previousClientX = 0;
+            let previousClientY = 0;
             // @ts-ignore https://github.com/microsoft/TypeScript/issues/44802
             let animationHandle;
             this.addEventListener('wheel', (event) => {
@@ -23,18 +25,25 @@ class PinchFrame extends HTMLElement {
                 }
                 event.preventDefault();
                 scaleRatio *= 0.98 ** event.deltaY;
-                ({ clientX, clientY } = event);
+                ({ clientX: wheelClientX, clientY: wheelClientY } = event);
                 animationHandle ??= requestAnimationFrame(() => {
                     animationHandle = undefined;
-                    this.#zoom(scaleRatio, clientX, clientY);
+                    this.#zoom(scaleRatio, wheelClientX, wheelClientY);
                     scaleRatio = 1;
                 });
             });
-            this.addEventListener('pointerdown', (event) => event.currentTarget.setPointerCapture(event.pointerId));
+            this.addEventListener('pointerdown', (event) => {
+                event.currentTarget.setPointerCapture(event.pointerId);
+                previousClientX = event.clientX;
+                previousClientY = event.clientY;
+            });
             this.addEventListener('pointermove', (event) => {
                 if (event.buttons === 1) {
                     event.preventDefault();
-                    this.scrollBy(-event.movementX, -event.movementY);
+                    // do not use movementX/Y, that do not aware page zoom
+                    this.scrollBy(previousClientX - event.clientX, previousClientY - event.clientY);
+                    previousClientX = event.clientX;
+                    previousClientY = event.clientY;
                 }
             });
         }
@@ -83,7 +92,7 @@ class PinchFrame extends HTMLElement {
     }
     #zoom(scaleRatio, centerClientX, centerClientY) {
         const content = this.firstElementChild;
-        if (scaleRatio === 1 || !(content instanceof HTMLElement || content instanceof SVGElement)) {
+        if (scaleRatio === 1 || !content) {
             return;
         }
         const contentStyle = getComputedStyle(content);
