@@ -17,58 +17,78 @@ const averageBy = <T>(items: ArrayLike<T>, selector: (item: T) => number) =>
 
 const roundToNatural = (value: number) => (value <= 0 ? 0 : Math.round(value));
 
+const debounced = (callback: () => void): [() => void, () => void] => {
+  let handle: number | undefined;
+  const wrappedCallback = () => ((handle = undefined), callback());
+  return [
+    () => (handle ??= requestAnimationFrame(wrappedCallback)),
+    () => handle !== undefined && (cancelAnimationFrame(handle), (handle = undefined)),
+  ];
+};
+
 class PinchFrame extends HTMLElement {
   constructor() {
     super();
     if (typeof ontouchend === 'undefined') {
-      let scaleRatio = 1;
-      let wheelClientX = 0;
-      let wheelClientY = 0;
-      let previousClientX = 0;
-      let previousClientY = 0;
-      // @ts-ignore https://github.com/microsoft/TypeScript/issues/44802
-      let animationHandle: number | undefined;
-      this.addEventListener('wheel', (event) => {
-        if (!event.ctrlKey) {
-          return;
-        }
-        event.preventDefault();
-        scaleRatio *= 0.98 ** event.deltaY;
-        ({ clientX: wheelClientX, clientY: wheelClientY } = event);
-        animationHandle ??= requestAnimationFrame(() => {
-          animationHandle = undefined;
-          this.#zoom(scaleRatio, wheelClientX, wheelClientY);
+      {
+        let scaleRatio = 1;
+        let clientX: number;
+        let clientY: number;
+        const [reserveZooming] = debounced(() => {
+          this.#zoom(scaleRatio, clientX, clientY);
           scaleRatio = 1;
         });
-      });
-      this.addEventListener('pointerdown', (event) => {
-        (event.currentTarget as typeof this).setPointerCapture(event.pointerId);
-        previousClientX = event.clientX;
-        previousClientY = event.clientY;
-      });
-      this.addEventListener('pointermove', (event) => {
-        if (event.buttons === 1) {
-          event.preventDefault();
+        this.addEventListener('wheel', (event) => {
+          if (event.ctrlKey) {
+            event.preventDefault();
+            scaleRatio *= 0.98 ** event.deltaY;
+            ({ clientX, clientY } = event);
+            reserveZooming();
+          }
+        });
+      }
+      {
+        let previousClientX: number;
+        let previousClientY: number;
+        let clientX: number;
+        let clientY: number;
+        const [reservePanning] = debounced(() => {
           // do not use movementX/Y, that do not aware page zoom
-          this.scrollBy(previousClientX - event.clientX, previousClientY - event.clientY);
-          previousClientX = event.clientX;
-          previousClientY = event.clientY;
-        }
-      });
+          this.scrollBy(previousClientX - clientX, previousClientY - clientY);
+          previousClientX = clientX;
+          previousClientY = clientY;
+        });
+        this.addEventListener('pointerdown', (event) => {
+          (event.currentTarget as this).setPointerCapture(event.pointerId);
+          ({ clientX: previousClientX, clientY: previousClientY } = event);
+        });
+        this.addEventListener('pointermove', (event) => {
+          if (event.buttons === 1) {
+            event.preventDefault();
+            ({ clientX, clientY } = event);
+            reservePanning();
+          }
+        });
+      }
     } else {
       let previousPoint: TouchPoint = { x: 0, y: 0, d: 0 };
       let points: TouchPoint[] = [];
-      let animationHandle: number | undefined;
+      const [reservePanZoom, cancelPanZoom] = debounced(() => {
+        const x = averageBy(points, (p) => p.x);
+        const y = averageBy(points, (p) => p.y);
+        const d = previousPoint.d && averageBy(points, (p) => p.d);
+        d && this.#zoom(d / previousPoint.d, x, y);
+        this.scrollBy(previousPoint.x - x, previousPoint.y - y);
+        points = [];
+        previousPoint = { x, y, d };
+      });
       const calculatePoint = ({ touches }: TouchEvent): TouchPoint => ({
         x: averageBy(touches, (touch) => touch.clientX),
         y: averageBy(touches, (touch) => touch.clientY),
         d: touches.length > 1 ? Math.hypot(touches[0]!.clientX - touches[1]!.clientX, touches[0]!.clientY - touches[1]!.clientY) : 0,
       });
       const onTouchStartEnd = (event: TouchEvent) => {
-        if (animationHandle !== undefined) {
-          cancelAnimationFrame(animationHandle);
-          animationHandle = undefined;
-        }
+        cancelPanZoom();
         points = [];
         event.touches.length !== 0 && (previousPoint = calculatePoint(event));
       };
@@ -79,16 +99,7 @@ class PinchFrame extends HTMLElement {
         (event) => {
           event.preventDefault();
           points.push(calculatePoint(event));
-          animationHandle ??= requestAnimationFrame(() => {
-            animationHandle = undefined;
-            const x = averageBy(points, (p) => p.x);
-            const y = averageBy(points, (p) => p.y);
-            const d = previousPoint.d && averageBy(points, (p) => p.d);
-            d && this.#zoom(d / previousPoint.d, x, y);
-            this.scrollBy(previousPoint.x - x, previousPoint.y - y);
-            points = [];
-            previousPoint = { x, y, d };
-          });
+          reservePanZoom();
         },
         { passive: false },
       );
