@@ -25,12 +25,14 @@ class ScrollableFrame extends HTMLElement {
   static readonly observedAttributes = ['scale', 'min-scale', 'max-scale', 'offset-x', 'offset-y'] as const;
 
   #scale = 1;
+  #reciprocalScale = 1;
   get scale() {
     return this.#scale;
   }
   set scale(scale) {
     if (this.#scale !== scale) {
       this.#setAttribute('scale', (this.#scale = scale = clamp(scale, this.#minScale, this.#maxScale)));
+      this.#reciprocalScale = 1 / scale;
       this.#content.style.transform = `scale(${scale})`;
     }
   }
@@ -73,14 +75,12 @@ class ScrollableFrame extends HTMLElement {
     this.setOffset(this.#offsetX, offsetY);
   }
 
-  readonly #container; // necessary to get the bounding box without scrollbar
   readonly #content;
   readonly #ignoreScrollEventTemporarily;
 
   constructor() {
     super();
-    this.attachShadow({ mode: 'open' }).innerHTML = '<div part=container><slot part=content></slot></div>';
-    this.#content = (this.#container = this.shadowRoot!.firstElementChild as HTMLDivElement).firstElementChild as HTMLSlotElement;
+    (this.#content = this.attachShadow({ mode: 'open' }).appendChild(document.createElement('slot'))).setAttribute('part', 'content');
     {
       let ignoresScrollEvent = false;
       const [reserveListeningScrollEvent] = throttle(() => (ignoresScrollEvent = false));
@@ -116,7 +116,7 @@ class ScrollableFrame extends HTMLElement {
     this.setAttribute('min-scale', this.#minScale as string & number);
     this.setAttribute('max-scale', this.#maxScale as string & number);
     setTimeout(() => {
-      const rect = this.#container.getBoundingClientRect();
+      const rect = this.getBoundingClientRect();
       const contentRect = this.#content.getBoundingClientRect();
       this.setOffset((rect.width - contentRect.width) / 2, (rect.height - contentRect.height) / 2);
     });
@@ -131,10 +131,10 @@ class ScrollableFrame extends HTMLElement {
     const contentStyle = this.#content.style;
     contentStyle.margin = `${clampZero(offsetY)}px 0 0 ${clampZero(offsetX)}px`;
     contentStyle.padding = '0';
-    const rect = this.#container.getBoundingClientRect();
+    const rect = this.getBoundingClientRect();
     const contentRect = this.#content.getBoundingClientRect();
-    contentStyle.padding = `0 ${offsetX < 0 ? clampZero(rect.width - contentRect.width - offsetX) : 0}px ${
-      offsetY < 0 ? clampZero(rect.height - contentRect.height - offsetY) : 0
+    contentStyle.padding = `0 ${offsetX < 0 ? clampZero(rect.width - contentRect.width - offsetX) * this.#reciprocalScale : 0}px ${
+      offsetY < 0 ? clampZero(rect.height - contentRect.height - offsetY) * this.#reciprocalScale : 0
     }px 0`;
     this.#ignoreScrollEventTemporarily();
     this.scrollTo(clampZero(-offsetX), clampZero(-offsetY));

@@ -1,7 +1,6 @@
 :is(pinch-frame) {
   touch-action: none;
-  display: grid;
-  place-items: stretch;
+  display: block;
   overflow: auto;
   cursor: grab;
   user-select: none;
