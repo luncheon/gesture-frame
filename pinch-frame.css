@@ -1,19 +1,20 @@
 :is(pinch-frame) {
   touch-action: none;
-  display: block;
+  display: grid;
+  place-items: stretch;
   overflow: auto;
   cursor: grab;
+  user-select: none;
 }
 
 :is(pinch-frame:active) {
   cursor: grabbing;
 }
 
-:is(pinch-frame > :first-child) {
+pinch-frame::part(content) {
   display: block;
   box-sizing: content-box;
   width: max-content;
   height: max-content;
-  margin: auto;
   transform-origin: 0 0;
 }
