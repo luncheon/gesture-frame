@@ -15,8 +15,8 @@
     "build": "tsc -p ."
   },
   "devDependencies": {
-    "esbuild": "^0.14.21",
+    "esbuild": "^0.14.25",
     "prettier": "^2.5.1",
-    "typescript": "^4.5.5"
+    "typescript": "^4.6.2"
   }
 }
