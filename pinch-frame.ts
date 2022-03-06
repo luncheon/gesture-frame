@@ -75,38 +75,39 @@ class ScrollableFrame extends HTMLElement {
     this.setOffset(this.#offsetX, offsetY);
   }
 
+  #marginX = 0;
+  #marginY = 0;
   readonly #content;
-  readonly #ignoreScrollEventTemporarily;
+  readonly #disableScrollEventTemporarily;
 
   constructor() {
     super();
     (this.#content = this.attachShadow({ mode: 'open' }).appendChild(document.createElement('slot'))).setAttribute('part', 'content');
     {
-      let ignoresScrollEvent = false;
-      const [reserveListeningScrollEvent] = throttle(() => (ignoresScrollEvent = false));
-      this.#ignoreScrollEventTemporarily = () => {
+      let isScrollEventEnabled = 1;
+      const [reserveListeningScrollEvent] = throttle(() => (isScrollEventEnabled = 1));
+      this.#disableScrollEventTemporarily = () => {
         reserveListeningScrollEvent();
-        ignoresScrollEvent = true;
+        isScrollEventEnabled = 0;
       };
-      this.addEventListener('scroll', ({ currentTarget }: Event) => {
-        if (!ignoresScrollEvent) {
-          const contentStyle = this.#content.style;
-          this.#setAttribute('offset-x', (this.#offsetX = parseFloat(contentStyle.marginLeft) - (currentTarget as this).scrollLeft));
-          this.#setAttribute('offset-y', (this.#offsetY = parseFloat(contentStyle.marginTop) - (currentTarget as this).scrollTop));
+      this.addEventListener('scroll', () => {
+        if (isScrollEventEnabled) {
+          this.#setAttribute('offset-x', (this.#offsetX = this.#marginX - this.scrollLeft));
+          this.#setAttribute('offset-y', (this.#offsetY = this.#marginY - this.scrollTop));
         }
       });
     }
   }
 
-  #ignoresAttributeChangedCallback = false;
+  #isAttributeChangedCallbackEnabled = 1;
   #setAttribute(name: typeof ScrollableFrame.observedAttributes[number], value: string | number) {
-    this.#ignoresAttributeChangedCallback = true;
+    this.#isAttributeChangedCallbackEnabled = 0;
     this.setAttribute(name, value as string & number);
-    this.#ignoresAttributeChangedCallback = false;
+    this.#isAttributeChangedCallbackEnabled = 1;
   }
 
   attributeChangedCallback(name: typeof ScrollableFrame['observedAttributes'][number], oldValue: string, newValue: string) {
-    if (!this.#ignoresAttributeChangedCallback && oldValue !== newValue) {
+    if (this.#isAttributeChangedCallbackEnabled && oldValue !== newValue) {
       this[name.replace(/-([a-z])/g, (_, $1) => $1.toUpperCase()) as 'scale' | 'minScale' | 'maxScale' | 'offsetX' | 'offsetY'] = +newValue;
     }
   }
@@ -129,14 +130,14 @@ class ScrollableFrame extends HTMLElement {
     this.#setAttribute('offset-x', (this.#offsetX = offsetX));
     this.#setAttribute('offset-y', (this.#offsetY = offsetY));
     const contentStyle = this.#content.style;
-    contentStyle.margin = `${clampZero(offsetY)}px 0 0 ${clampZero(offsetX)}px`;
+    contentStyle.margin = `${(this.#marginY = clampZero(offsetY))}px 0 0 ${(this.#marginX = clampZero(offsetX))}px`;
     contentStyle.padding = '0';
     const rect = this.getBoundingClientRect();
     const contentRect = this.#content.getBoundingClientRect();
     contentStyle.padding = `0 ${offsetX < 0 ? clampZero(rect.width - contentRect.width - offsetX) * this.#reciprocalScale : 0}px ${
       offsetY < 0 ? clampZero(rect.height - contentRect.height - offsetY) * this.#reciprocalScale : 0
     }px 0`;
-    this.#ignoreScrollEventTemporarily();
+    this.#disableScrollEventTemporarily();
     this.scrollTo(clampZero(-offsetX), clampZero(-offsetY));
   }
 
@@ -146,12 +147,12 @@ class ScrollableFrame extends HTMLElement {
     if (scale === previousScale) {
       return;
     }
-    const offsetScale = scale / previousScale - 1;
+    const offsetScale = scale * this.#reciprocalScale - 1;
     const contentRect = this.#content.getBoundingClientRect();
     this.scale = scale;
     this.setOffset(
-      this.#offsetX - offsetScale * (originClientX - contentRect.x),
-      this.#offsetY - offsetScale * (originClientY - contentRect.y),
+      this.#offsetX + offsetScale * (contentRect.x - originClientX),
+      this.#offsetY + offsetScale * (contentRect.y - originClientY),
     );
   }
 }
