@@ -81,8 +81,9 @@ class ScrollableFrame extends HTMLElement {
             };
             this.addEventListener('scroll', () => {
                 if (isScrollEventEnabled) {
-                    this.#setAttribute('offset-x', (this.#offsetX = this.#marginX - this.scrollLeft));
-                    this.#setAttribute('offset-y', (this.#offsetY = this.#marginY - this.scrollTop));
+                    const offset = this.#getCTMs()[0].transformPoint({ x: this.#marginX - this.scrollLeft, y: this.#marginY - this.scrollTop });
+                    this.#setAttribute('offset-x', (this.#offsetX = offset.x));
+                    this.#setAttribute('offset-y', (this.#offsetY = offset.y));
                 }
             });
         }
@@ -108,20 +109,41 @@ class ScrollableFrame extends HTMLElement {
             this.setOffset((rect.width - contentRect.width) / 2, (rect.height - contentRect.height) / 2);
         });
     }
+    #memoizedCTMString = '';
+    #memoizedCTMs = [new DOMMatrixReadOnly(), new DOMMatrixReadOnly()];
+    #getCTMs() {
+        let ctmString = '';
+        for (let element = this; element; element = element.parentElement) {
+            const transform = getComputedStyle(element).transform;
+            transform && transform !== 'none' && (ctmString += ` ${transform}`);
+        }
+        if (this.#memoizedCTMString !== ctmString) {
+            const ctm = new DOMMatrix(ctmString);
+            ctm.e = ctm.f = 0;
+            this.#memoizedCTMString = ctmString;
+            this.#memoizedCTMs = [DOMMatrixReadOnly.fromMatrix(ctm), DOMMatrixReadOnly.fromMatrix(ctm.inverse())];
+        }
+        return this.#memoizedCTMs;
+    }
     setOffset(offsetX, offsetY) {
         if (this.#offsetX === offsetX && this.#offsetY === offsetY) {
             return;
         }
         this.#setAttribute('offset-x', (this.#offsetX = offsetX));
         this.#setAttribute('offset-y', (this.#offsetY = offsetY));
-        const contentStyle = this.#content.style;
-        contentStyle.margin = `${(this.#marginY = clampZero(offsetY))}px 0 0 ${(this.#marginX = clampZero(offsetX))}px`;
+        const scale = this.#scale;
+        const reciprocalScale = this.#reciprocalScale;
+        const content = this.#content;
+        const contentStyle = content.style;
+        const [ctm, inverseCTM] = this.#getCTMs();
+        const { x, y } = inverseCTM.transformPoint({ x: offsetX, y: offsetY });
+        contentStyle.margin = `${(this.#marginY = clampZero(y))}px 0 0 ${(this.#marginX = clampZero(x))}px`;
         contentStyle.padding = '0';
-        const rect = this.getBoundingClientRect();
-        const contentRect = this.#content.getBoundingClientRect();
-        contentStyle.padding = `0 ${offsetX < 0 ? clampZero(rect.width - contentRect.width - offsetX) * this.#reciprocalScale : 0}px ${offsetY < 0 ? clampZero(rect.height - contentRect.height - offsetY) * this.#reciprocalScale : 0}px 0`;
+        const paddingRight = x < 0 ? clampZero((this.clientWidth - content.clientWidth * scale) * ctm.a - x) * reciprocalScale * inverseCTM.a : 0;
+        const paddingBottom = y < 0 ? clampZero((this.clientHeight - content.clientHeight * scale) * ctm.d - y) * reciprocalScale * inverseCTM.d : 0;
+        contentStyle.padding = `0 ${paddingRight}px ${paddingBottom}px 0`;
         this.#disableScrollEventTemporarily();
-        this.scrollTo(clampZero(-offsetX), clampZero(-offsetY));
+        this.scrollTo(clampZero(-x), clampZero(-y));
     }
     zoom(scaleRatio, originClientX, originClientY) {
         const previousScale = this.#scale;
