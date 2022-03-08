@@ -25,14 +25,12 @@ class ScrollableFrame extends HTMLElement {
   static readonly observedAttributes = ['scale', 'min-scale', 'max-scale', 'offset-x', 'offset-y'] as const;
 
   #scale = 1;
-  #reciprocalScale = 1;
   get scale() {
     return this.#scale;
   }
   set scale(scale) {
     if (this.#scale !== scale) {
       this.#setAttribute('scale', (this.#scale = scale = clamp(scale, this.#minScale, this.#maxScale)));
-      this.#reciprocalScale = 1 / scale;
       this.#content.style.transform = `scale(${scale})`;
     }
   }
@@ -77,12 +75,18 @@ class ScrollableFrame extends HTMLElement {
 
   #marginX = 0;
   #marginY = 0;
+  readonly #container;
+  readonly #topLeft;
   readonly #content;
   readonly #disableScrollEventTemporarily;
 
   constructor() {
     super();
-    (this.#content = this.attachShadow({ mode: 'open' }).appendChild(document.createElement('slot'))).setAttribute('part', 'content');
+    const shadowRoot = this.attachShadow({ mode: 'open' });
+    shadowRoot.innerHTML = '<div part=container><div part=top-left></div><slot part=content></slot></div>';
+    this.#container = shadowRoot.firstElementChild as HTMLDivElement;
+    this.#topLeft = this.#container.firstElementChild as HTMLDivElement;
+    this.#content = this.#topLeft.nextElementSibling as HTMLSlotElement;
     {
       let isScrollEventEnabled = 1;
       const [reserveListeningScrollEvent] = throttle(() => (isScrollEventEnabled = 1));
@@ -117,11 +121,6 @@ class ScrollableFrame extends HTMLElement {
     this.setAttribute('scale', this.#scale as string & number);
     this.setAttribute('min-scale', this.#minScale as string & number);
     this.setAttribute('max-scale', this.#maxScale as string & number);
-    setTimeout(() => {
-      const rect = this.getBoundingClientRect();
-      const contentRect = this.#content.getBoundingClientRect();
-      this.setOffset((rect.width - contentRect.width) / 2, (rect.height - contentRect.height) / 2);
-    });
   }
 
   #memoizedCTMString = '';
@@ -130,7 +129,7 @@ class ScrollableFrame extends HTMLElement {
     let ctmString = '';
     for (let element: Element | null = this; element; element = element.parentElement) {
       const transform = getComputedStyle(element).transform;
-      transform && transform !== 'none' && (ctmString += ` ${transform}`);
+      transform && transform !== 'none' && (ctmString = `${transform} ${ctmString}`);
     }
     if (this.#memoizedCTMString !== ctmString) {
       const ctm = new DOMMatrix(ctmString);
@@ -147,19 +146,11 @@ class ScrollableFrame extends HTMLElement {
     }
     this.#setAttribute('offset-x', (this.#offsetX = offsetX));
     this.#setAttribute('offset-y', (this.#offsetY = offsetY));
-    const scale = this.#scale;
-    const reciprocalScale = this.#reciprocalScale;
-    const content = this.#content;
-    const contentStyle = content.style;
-    const [ctm, inverseCTM] = this.#getCTMs();
-    const { x, y } = inverseCTM.transformPoint({ x: offsetX, y: offsetY });
-    contentStyle.margin = `${(this.#marginY = clampZero(y))}px 0 0 ${(this.#marginX = clampZero(x))}px`;
-    contentStyle.padding = '0';
-    const paddingRight =
-      x < 0 ? clampZero((this.clientWidth - content.clientWidth * scale) * ctm.a - x) * reciprocalScale * inverseCTM.a : 0;
-    const paddingBottom =
-      y < 0 ? clampZero((this.clientHeight - content.clientHeight * scale) * ctm.d - y) * reciprocalScale * inverseCTM.d : 0;
-    contentStyle.padding = `0 ${paddingRight}px ${paddingBottom}px 0`;
+    const { x, y } = this.#getCTMs()[1].transformPoint({ x: offsetX, y: offsetY });
+    const containerStyle = this.#container.style;
+    containerStyle.margin = `${(this.#marginY = clampZero(y))}px 0 0 ${(this.#marginX = clampZero(x))}px`;
+    containerStyle.width = `${x < 0 ? this.clientWidth - x : 0}px`;
+    containerStyle.height = `${y < 0 ? this.clientHeight - y : 0}px`;
     this.#disableScrollEventTemporarily();
     this.scrollTo(clampZero(-x), clampZero(-y));
   }
@@ -170,13 +161,10 @@ class ScrollableFrame extends HTMLElement {
     if (scale === previousScale) {
       return;
     }
-    const offsetScale = scale * this.#reciprocalScale - 1;
-    const contentRect = this.#content.getBoundingClientRect();
+    const offsetScale = scale / previousScale - 1;
+    const topLeft = this.#topLeft.getBoundingClientRect();
     this.scale = scale;
-    this.setOffset(
-      this.#offsetX + offsetScale * (contentRect.x - originClientX),
-      this.#offsetY + offsetScale * (contentRect.y - originClientY),
-    );
+    this.setOffset(this.#offsetX + offsetScale * (topLeft.x - originClientX), this.#offsetY + offsetScale * (topLeft.y - originClientY));
   }
 }
 
