@@ -9,6 +9,12 @@
     <header style="text-align: center">
       <h1>pinch-frame</h1>
     </header>
+    <div style="width: 80vw; margin: auto; text-align: right">
+      <label style="cursor: pointer; display: inline-flex; align-items: center">
+        <input style="cursor: pointer" type="checkbox" onchange="document.querySelector('pinch-frame').disabled=this.checked">
+        disabled
+      </label>
+      </div>
     <pinch-frame style="width: 80vw; height: calc(80vh - 32px); margin: auto; box-shadow: 0 1px 4px #888">
       <div style="width: 400px">
         <p style="margin: 0; border: 1px solid #888">

@@ -22,7 +22,7 @@ const throttle = (callback: () => void): [() => void, () => void] => {
 };
 
 class ScrollableFrame extends HTMLElement {
-  static readonly observedAttributes = ['scale', 'min-scale', 'max-scale', 'offset-x', 'offset-y'] as const;
+  static readonly observedAttributes: readonly string[] = ['scale', 'min-scale', 'max-scale', 'offset-x', 'offset-y'];
 
   #scale = 1;
   get scale() {
@@ -105,13 +105,13 @@ class ScrollableFrame extends HTMLElement {
   }
 
   #isAttributeChangedCallbackEnabled = 1;
-  #setAttribute(name: typeof ScrollableFrame.observedAttributes[number], value: string | number) {
+  #setAttribute(name: string, value: string | number) {
     this.#isAttributeChangedCallbackEnabled = 0;
     this.setAttribute(name, value as string & number);
     this.#isAttributeChangedCallbackEnabled = 1;
   }
 
-  attributeChangedCallback(name: typeof ScrollableFrame['observedAttributes'][number], oldValue: string, newValue: string) {
+  attributeChangedCallback(name: string, oldValue: string, newValue: string) {
     if (this.#isAttributeChangedCallbackEnabled && oldValue !== newValue) {
       this[name.replace(/-([a-z])/g, (_, $1) => $1.toUpperCase()) as 'scale' | 'minScale' | 'maxScale' | 'offsetX' | 'offsetY'] = +newValue;
     }
@@ -168,89 +168,141 @@ class ScrollableFrame extends HTMLElement {
   }
 }
 
+const createWheelListener = (element: ScrollableFrame) => {
+  let scaleRatio = 1;
+  let clientX: number;
+  let clientY: number;
+  const [reserveZooming] = throttle(() => {
+    element.zoom(scaleRatio, clientX, clientY);
+    scaleRatio = 1;
+  });
+  return (event: WheelEvent) => {
+    if (event.ctrlKey) {
+      event.preventDefault();
+      scaleRatio *= 0.98 ** event.deltaY;
+      ({ clientX, clientY } = event);
+      reserveZooming();
+    }
+  };
+};
+
+const createPointerListeners = (element: ScrollableFrame): [() => void, () => void] => {
+  let previousClientX: number;
+  let previousClientY: number;
+  let clientX: number;
+  let clientY: number;
+  const [reservePanning] = throttle(() => {
+    // do not use movementX/Y, that do not aware page zoom
+    element.setOffset(element.offsetX + clientX - previousClientX, element.offsetY + clientY - previousClientY);
+    previousClientX = clientX;
+    previousClientY = clientY;
+  });
+  const onPointerDown = (event: PointerEvent) => {
+    (event.currentTarget as ScrollableFrame).setPointerCapture(event.pointerId);
+    ({ clientX: previousClientX, clientY: previousClientY } = event);
+  };
+  const onPointerMove = (event: PointerEvent) => {
+    if (event.buttons === 1) {
+      event.preventDefault();
+      ({ clientX, clientY } = event);
+      reservePanning();
+    }
+  };
+  const onWheel = createWheelListener(element);
+  return [
+    () => {
+      element.addEventListener('wheel', onWheel);
+      element.addEventListener('pointerdown', onPointerDown);
+      element.addEventListener('pointermove', onPointerMove);
+    },
+    () => {
+      element.removeEventListener('wheel', onWheel);
+      element.removeEventListener('pointerdown', onPointerDown);
+      element.removeEventListener('pointermove', onPointerMove);
+    },
+  ];
+};
+
 interface TouchPoint {
   readonly x: number;
   readonly y: number;
   readonly d: number;
 }
+const createTouchListeners = (element: ScrollableFrame): [() => void, () => void] => {
+  let previousPoint: TouchPoint = { x: 0, y: 0, d: 0 };
+  let points: TouchPoint[] = [];
+  const [reservePanZoom, cancelPanZoom] = throttle(() => {
+    const x = averageBy(points, (p) => p.x);
+    const y = averageBy(points, (p) => p.y);
+    const d = previousPoint.d && averageBy(points, (p) => p.d);
+    d && element.zoom(d / previousPoint.d, x, y);
+    element.setOffset(element.offsetX + x - previousPoint.x, element.offsetY + y - previousPoint.y);
+    points = [];
+    previousPoint = { x, y, d };
+  });
+  const calculatePoint = ({ touches }: TouchEvent): TouchPoint => ({
+    x: averageBy(touches, (touch) => touch.clientX),
+    y: averageBy(touches, (touch) => touch.clientY),
+    d: touches.length > 1 ? Math.hypot(touches[0]!.clientX - touches[1]!.clientX, touches[0]!.clientY - touches[1]!.clientY) : 0,
+  });
+  const onTouchStartEnd = (event: TouchEvent) => {
+    cancelPanZoom();
+    points = [];
+    event.touches.length !== 0 && (previousPoint = calculatePoint(event));
+  };
+  const onTouchMove = (event: TouchEvent) => {
+    event.preventDefault();
+    points.push(calculatePoint(event));
+    reservePanZoom();
+  };
+  const nonPassive: AddEventListenerOptions = { passive: false };
+  return [
+    () => {
+      element.addEventListener('touchstart', onTouchStartEnd);
+      element.addEventListener('touchend', onTouchStartEnd);
+      element.addEventListener('touchmove', onTouchMove, nonPassive);
+    },
+    () => {
+      element.removeEventListener('touchstart', onTouchStartEnd);
+      element.removeEventListener('touchend', onTouchStartEnd);
+      element.removeEventListener('touchmove', onTouchMove, nonPassive);
+    },
+  ];
+};
 
 class PinchFrame extends ScrollableFrame {
+  static override readonly observedAttributes: readonly string[] = [...super.observedAttributes, 'disabled'];
+
+  readonly #addRemoveListeners;
+
+  #disabled = false;
+  get disabled() {
+    return this.#disabled;
+  }
+  set disabled(disabled: boolean) {
+    disabled = !!disabled;
+    if (this.#disabled !== disabled) {
+      if ((this.#disabled = disabled)) {
+        this.#addRemoveListeners[1]();
+        this.setAttribute('disabled', '');
+      } else {
+        this.#addRemoveListeners[0]();
+        this.removeAttribute('disabled');
+      }
+    }
+  }
+
   constructor() {
     super();
-    if (typeof ontouchend === 'undefined') {
-      {
-        let scaleRatio = 1;
-        let clientX: number;
-        let clientY: number;
-        const [reserveZooming] = throttle(() => {
-          this.zoom(scaleRatio, clientX, clientY);
-          scaleRatio = 1;
-        });
-        this.addEventListener('wheel', (event) => {
-          if (event.ctrlKey) {
-            event.preventDefault();
-            scaleRatio *= 0.98 ** event.deltaY;
-            ({ clientX, clientY } = event);
-            reserveZooming();
-          }
-        });
-      }
-      {
-        let previousClientX: number;
-        let previousClientY: number;
-        let clientX: number;
-        let clientY: number;
-        const [reservePanning] = throttle(() => {
-          // do not use movementX/Y, that do not aware page zoom
-          this.setOffset(this.offsetX + clientX - previousClientX, this.offsetY + clientY - previousClientY);
-          previousClientX = clientX;
-          previousClientY = clientY;
-        });
-        this.addEventListener('pointerdown', (event) => {
-          (event.currentTarget as this).setPointerCapture(event.pointerId);
-          ({ clientX: previousClientX, clientY: previousClientY } = event);
-        });
-        this.addEventListener('pointermove', (event) => {
-          if (event.buttons === 1) {
-            event.preventDefault();
-            ({ clientX, clientY } = event);
-            reservePanning();
-          }
-        });
-      }
+    this.#addRemoveListeners = typeof ontouchend === 'undefined' ? createPointerListeners(this) : createTouchListeners(this);
+    this.#addRemoveListeners[0]();
+  }
+
+  override attributeChangedCallback(name: string, oldValue: string, newValue: string) {
+    if (name === 'disabled') {
+      this.disabled = newValue !== null;
     } else {
-      let previousPoint: TouchPoint = { x: 0, y: 0, d: 0 };
-      let points: TouchPoint[] = [];
-      const [reservePanZoom, cancelPanZoom] = throttle(() => {
-        const x = averageBy(points, (p) => p.x);
-        const y = averageBy(points, (p) => p.y);
-        const d = previousPoint.d && averageBy(points, (p) => p.d);
-        d && this.zoom(d / previousPoint.d, x, y);
-        this.setOffset(this.offsetX + x - previousPoint.x, this.offsetY + y - previousPoint.y);
-        points = [];
-        previousPoint = { x, y, d };
-      });
-      const calculatePoint = ({ touches }: TouchEvent): TouchPoint => ({
-        x: averageBy(touches, (touch) => touch.clientX),
-        y: averageBy(touches, (touch) => touch.clientY),
-        d: touches.length > 1 ? Math.hypot(touches[0]!.clientX - touches[1]!.clientX, touches[0]!.clientY - touches[1]!.clientY) : 0,
-      });
-      const onTouchStartEnd = (event: TouchEvent) => {
-        cancelPanZoom();
-        points = [];
-        event.touches.length !== 0 && (previousPoint = calculatePoint(event));
-      };
-      this.addEventListener('touchstart', onTouchStartEnd);
-      this.addEventListener('touchend', onTouchStartEnd);
-      this.addEventListener(
-        'touchmove',
-        (event) => {
-          event.preventDefault();
-          points.push(calculatePoint(event));
-          reservePanZoom();
-        },
-        { passive: false },
-      );
+      super.attributeChangedCallback(name, oldValue, newValue);
     }
   }
 }

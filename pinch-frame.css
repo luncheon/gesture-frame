@@ -2,11 +2,15 @@
   touch-action: none;
   display: block;
   overflow: auto;
+}
+
+:where(pinch-frame:not([disabled])) {
   cursor: grab;
+  -webkit-user-select: none;
   user-select: none;
 }
 
-:where(pinch-frame:active) {
+:where(pinch-frame:not([disabled]):active) {
   cursor: grabbing;
 }
 
