@@ -1,4 +1,4 @@
-:is(pinch-frame) {
+:where(pinch-frame) {
   touch-action: none;
   display: block;
   overflow: auto;
@@ -6,17 +6,17 @@
   user-select: none;
 }
 
-:is(pinch-frame:active) {
+:where(pinch-frame:active) {
   cursor: grabbing;
 }
 
-pinch-frame::part(container) {
+:where(pinch-frame)::part(container) {
   display: grid;
   grid-template-rows: 0 max-content;
   grid-template-columns: 0 max-content;
 }
 
-pinch-frame::part(content) {
+:where(pinch-frame)::part(content) {
   grid-area: 2 / 2 / 3 / 3;
   display: block;
   width: max-content;
