@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
-    "noEmit": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
     "target": "esnext",
     "module": "esnext",
     "moduleResolution": "node",

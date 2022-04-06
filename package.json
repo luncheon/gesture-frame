@@ -2,8 +2,15 @@
   "name": "pinch-frame",
   "version": "0.0.0",
   "description": "",
+  "type": "module",
   "main": "pinch-frame.js",
   "types": "pinch-frame.d.ts",
+  "files": [
+    "pinch-frame.css",
+    "pinch-frame.js",
+    "pinch-frame.d.ts",
+    "pinch-frame.ts"
+  ],
   "prettier": {
     "printWidth": 140,
     "endOfLine": "lf",
@@ -11,7 +18,7 @@
     "trailingComma": "all"
   },
   "scripts": {
-    "start": "esbuild --serve=0.0.0.0:8000 --servedir=. pinch-frame.ts",
+    "start": "esbuild --minify --format=esm --sourcemap --serve=0.0.0.0:8000 --servedir=. pinch-frame.ts",
     "build": "tsc -p . && esbuild --minify --format=esm --outdir=. pinch-frame.ts"
   },
   "devDependencies": {

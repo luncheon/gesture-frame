@@ -270,7 +270,7 @@ const createTouchListeners = (element: ScrollableFrame): [() => void, () => void
   ];
 };
 
-class PinchFrame extends ScrollableFrame {
+export class PinchFrame extends ScrollableFrame {
   static override readonly observedAttributes: readonly string[] = [...super.observedAttributes, 'disabled'];
 
   readonly #addRemoveListeners;
