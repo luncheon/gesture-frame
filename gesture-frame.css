@@ -1,28 +1,28 @@
-:where(pinch-frame) {
+:where(gesture-frame) {
   touch-action: none;
   display: block;
   overflow: auto;
 }
 
-:where(pinch-frame[pan]) {
+:where(gesture-frame[pan]) {
   cursor: grab;
 }
-:where(pinch-frame[pan]:active) {
+:where(gesture-frame[pan]:active) {
   cursor: grabbing;
 }
 
-:where(pinch-frame:is([pan], [pinch-zoom])) {
+:where(gesture-frame:is([pan], [pinch-zoom])) {
   -webkit-user-select: none;
   user-select: none;
 }
 
-:where(pinch-frame)::part(container) {
+:where(gesture-frame)::part(container) {
   display: grid;
   grid-template-rows: 0 max-content;
   grid-template-columns: 0 max-content;
 }
 
-:where(pinch-frame)::part(content) {
+:where(gesture-frame)::part(content) {
   grid-area: 2 / 2 / 3 / 3;
   display: block;
   width: max-content;

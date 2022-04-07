@@ -1,15 +1,16 @@
 {
-  "name": "pinch-frame",
+  "name": "gesture-frame",
   "version": "0.0.0",
   "description": "",
+  "repository": "luncheon/gesture-frame",
   "type": "module",
-  "main": "pinch-frame.js",
-  "types": "pinch-frame.d.ts",
+  "main": "gesture-frame.js",
+  "types": "gesture-frame.d.ts",
   "files": [
-    "pinch-frame.css",
-    "pinch-frame.js",
-    "pinch-frame.d.ts",
-    "pinch-frame.ts"
+    "gesture-frame.css",
+    "gesture-frame.js",
+    "gesture-frame.d.ts",
+    "gesture-frame.ts"
   ],
   "prettier": {
     "printWidth": 140,
@@ -18,8 +19,8 @@
     "trailingComma": "all"
   },
   "scripts": {
-    "start": "esbuild --minify --format=esm --sourcemap --serve=0.0.0.0:8000 --servedir=. pinch-frame.ts",
-    "build": "tsc -p . && esbuild --minify --format=esm --outdir=. pinch-frame.ts"
+    "start": "esbuild --minify --format=esm --sourcemap --serve=0.0.0.0:8000 --servedir=. gesture-frame.ts",
+    "build": "tsc -p . && esbuild --minify --format=esm --outdir=. gesture-frame.ts"
   },
   "devDependencies": {
     "esbuild": "^0.14.32",

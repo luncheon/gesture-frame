@@ -13,5 +13,5 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "files": ["pinch-frame.ts"]
+  "files": ["gesture-frame.ts"]
 }

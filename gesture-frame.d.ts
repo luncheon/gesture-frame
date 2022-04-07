@@ -17,7 +17,7 @@ declare class ScrollableFrame extends HTMLElement {
     setOffset(offsetX: number, offsetY: number): void;
     zoom(scaleRatio: number, originClientX: number, originClientY: number): void;
 }
-export declare class PinchFrame extends ScrollableFrame {
+export declare class GestureFrame extends ScrollableFrame {
     #private;
     static readonly observedAttributes: readonly string[];
     get pan(): boolean;

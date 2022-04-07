@@ -174,7 +174,7 @@ interface TouchPoint {
   readonly d: number;
 }
 
-export class PinchFrame extends ScrollableFrame {
+export class GestureFrame extends ScrollableFrame {
   static override readonly observedAttributes: readonly string[] = [...super.observedAttributes, 'pan', 'pinch-zoom'];
 
   #pan = false;
@@ -219,7 +219,6 @@ export class PinchFrame extends ScrollableFrame {
 
   constructor() {
     super();
-
     if (typeof ontouchend !== 'undefined') {
       let previousPoint: TouchPoint = { x: 0, y: 0, d: 0 };
       let points: TouchPoint[] = [];
@@ -302,4 +301,4 @@ export class PinchFrame extends ScrollableFrame {
   }
 }
 
-customElements.define('pinch-frame', PinchFrame);
+customElements.define('gesture-frame', GestureFrame);
