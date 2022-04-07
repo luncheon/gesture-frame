@@ -294,7 +294,7 @@ export class GestureFrame extends ScrollableFrame {
         onWheel = (event: WheelEvent) => {
           if (this.#pinchZoom && event.ctrlKey) {
             event.preventDefault();
-            scaleRatio *= 0.98 ** event.deltaY;
+            scaleRatio *= 0.99 ** event.deltaY;
             ({ clientX, clientY } = event);
             reserveZooming();
           }
