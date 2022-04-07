@@ -4,14 +4,16 @@
   overflow: auto;
 }
 
-:where(pinch-frame:not([disabled])) {
+:where(pinch-frame[pan]) {
   cursor: grab;
-  -webkit-user-select: none;
-  user-select: none;
+}
+:where(pinch-frame[pan]:active) {
+  cursor: grabbing;
 }
 
-:where(pinch-frame:not([disabled]):active) {
-  cursor: grabbing;
+:where(pinch-frame:is([pan], [pinch-zoom])) {
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 :where(pinch-frame)::part(container) {

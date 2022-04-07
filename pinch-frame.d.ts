@@ -20,9 +20,11 @@ declare class ScrollableFrame extends HTMLElement {
 export declare class PinchFrame extends ScrollableFrame {
     #private;
     static readonly observedAttributes: readonly string[];
-    get disabled(): boolean;
-    set disabled(disabled: boolean);
-    constructor();
+    get pan(): boolean;
+    set pan(pan: boolean);
+    get pinchZoom(): boolean;
+    set pinchZoom(pinchZoom: boolean);
     attributeChangedCallback(name: string, oldValue: string, newValue: string): void;
+    constructor();
 }
 export {};
