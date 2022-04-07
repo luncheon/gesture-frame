@@ -18,7 +18,11 @@
         <input style="cursor: pointer" type="checkbox" checked onchange="document.querySelector('gesture-frame').pinchZoom=this.checked">
         pinch-zoom
       </label>
-      </div>
+      <label style="cursor: pointer; display: inline-flex; align-items: center">
+        <input style="cursor: pointer" type="checkbox" onchange="document.querySelector('gesture-frame').setAttribute('event-source',this.checked?'window':'this')">
+        listen events on window
+      </label>
+    </div>
     <gesture-frame pan pinch-zoom style="width: 80vw; height: calc(80vh - 32px); margin: auto; box-shadow: 0 1px 4px #888">
       <div style="width: 400px">
         <p style="margin: 0; border: 1px solid #888">
