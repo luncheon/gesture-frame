@@ -179,21 +179,30 @@ const nonPassive: AddEventListenerOptions = { passive: false };
 const isTouchEventEnabled = typeof ontouchend !== 'undefined';
 
 export class GestureFrame extends ScrollableFrame {
-  static override readonly observedAttributes: readonly string[] = [...super.observedAttributes, 'pan', 'pinch-zoom'];
+  static override readonly observedAttributes: readonly string[] = [...super.observedAttributes, 'pan-x', 'pan-y', 'pinch-zoom'];
 
-  #pan = false;
-  get pan() {
-    return this.#pan;
-  }
-  set pan(pan) {
-    pan = !!pan;
-    if (this.#pan !== pan) {
-      if ((this.#pan = pan)) {
-        this.setAttribute('pan', '');
-      } else {
-        this.removeAttribute('pan');
-      }
+  #setBooleanAttribute(name: string, oldValue: boolean, newValue: boolean) {
+    newValue = !!newValue;
+    if (oldValue !== newValue) {
+      newValue ? this.setAttribute(name, '') : this.removeAttribute(name);
     }
+    return newValue;
+  }
+
+  #panX = false;
+  get panX() {
+    return this.#panX;
+  }
+  set panX(panX) {
+    this.#panX = this.#setBooleanAttribute('pan-x', this.#panX, panX);
+  }
+
+  #panY = false;
+  get panY() {
+    return this.#panY;
+  }
+  set panY(panY) {
+    this.#panY = this.#setBooleanAttribute('pan-y', this.#panY, panY);
   }
 
   #pinchZoom = false;
@@ -201,19 +210,14 @@ export class GestureFrame extends ScrollableFrame {
     return this.#pinchZoom;
   }
   set pinchZoom(pinchZoom) {
-    pinchZoom = !!pinchZoom;
-    if (this.#pinchZoom !== pinchZoom) {
-      if ((this.#pinchZoom = pinchZoom)) {
-        this.setAttribute('pinch-zoom', '');
-      } else {
-        this.removeAttribute('pinch-zoom');
-      }
-    }
+    this.#pinchZoom = this.#setBooleanAttribute('pinch-zoom', this.#pinchZoom, pinchZoom);
   }
 
   override attributeChangedCallback(name: string, oldValue: string, newValue: string) {
-    if (name === 'pan') {
-      this.pan = newValue !== null;
+    if (name === 'pan-x') {
+      this.panX = newValue !== null;
+    } else if (name === 'pan-y') {
+      this.panY = newValue !== null;
     } else if (name === 'pinch-zoom') {
       this.pinchZoom = newValue !== null;
     } else {
@@ -230,8 +234,11 @@ export class GestureFrame extends ScrollableFrame {
         const x = averageBy(points, (p) => p.x);
         const y = averageBy(points, (p) => p.y);
         const d = previousPoint.d && averageBy(points, (p) => p.d);
-        d && this.zoom(d / previousPoint.d, x, y);
-        this.setOffset(this.offsetX + x - previousPoint.x, this.offsetY + y - previousPoint.y);
+        d && this.#pinchZoom && this.zoom(d / previousPoint.d, x, y);
+        this.setOffset(
+          this.#panX ? this.offsetX + x - previousPoint.x : this.offsetX,
+          this.#panY ? this.offsetY + y - previousPoint.y : this.offsetY,
+        );
         points = [];
         previousPoint = { x, y, d };
       });
@@ -246,7 +253,7 @@ export class GestureFrame extends ScrollableFrame {
         event.touches.length !== 0 && (previousPoint = calculatePoint(event));
       };
       const onTouchMove = (event: TouchEvent) => {
-        if (event.touches.length === 1 ? this.#pan : this.#pinchZoom) {
+        if (event.touches.length === 1 ? this.#panX || this.#panY : this.#pinchZoom) {
           event.preventDefault();
           points.push(calculatePoint(event));
           reservePanZoom();
@@ -284,7 +291,10 @@ export class GestureFrame extends ScrollableFrame {
         let clientY: number;
         const [reservePanning] = throttle(() => {
           // do not use movementX/Y, that do not aware page zoom
-          this.setOffset(this.offsetX + clientX - previousClientX, this.offsetY + clientY - previousClientY);
+          this.setOffset(
+            this.#panX ? this.offsetX + clientX - previousClientX : this.offsetX,
+            this.#panY ? this.offsetY + clientY - previousClientY : this.offsetY,
+          );
           previousClientX = clientX;
           previousClientY = clientY;
         });
@@ -294,7 +304,7 @@ export class GestureFrame extends ScrollableFrame {
           reservePanning();
         };
         const onPointerDown = (event: PointerEvent) => {
-          if (this.#pan && event.button === 0) {
+          if ((this.#panX || this.#panY) && event.button === 0) {
             ({ clientX: previousClientX, clientY: previousClientY } = event);
             addEventListener('pointermove', onPointerMove);
           }

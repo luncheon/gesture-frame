@@ -20,8 +20,10 @@ declare class ScrollableFrame extends HTMLElement {
 export declare class GestureFrame extends ScrollableFrame {
     #private;
     static readonly observedAttributes: readonly string[];
-    get pan(): boolean;
-    set pan(pan: boolean);
+    get panX(): boolean;
+    set panX(panX: boolean);
+    get panY(): boolean;
+    set panY(panY: boolean);
     get pinchZoom(): boolean;
     set pinchZoom(pinchZoom: boolean);
     attributeChangedCallback(name: string, oldValue: string, newValue: string): void;
