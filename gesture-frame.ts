@@ -178,20 +178,7 @@ const nonPassive: AddEventListenerOptions = { passive: false };
 const isTouchEventEnabled = typeof ontouchend !== 'undefined';
 
 export class GestureFrame extends ScrollableFrame {
-  static override readonly observedAttributes: readonly string[] = [...super.observedAttributes, 'event-source', 'pan', 'pinch-zoom'];
-
-  #eventSource: Window | Element = this;
-  get eventSource() {
-    return this.#eventSource;
-  }
-  set eventSource(eventSource: Window | Element | null | undefined) {
-    eventSource ??= this;
-    if (this.eventSource !== eventSource) {
-      this.#eventSource = eventSource;
-      eventSource === window ? this.setAttribute('event-source', 'window') : this.removeAttribute('event-source');
-      this.#setEventListeners();
-    }
-  }
+  static override readonly observedAttributes: readonly string[] = [...super.observedAttributes, 'pan', 'pinch-zoom'];
 
   #pan = false;
   get pan() {
@@ -228,8 +215,6 @@ export class GestureFrame extends ScrollableFrame {
       this.pan = newValue !== null;
     } else if (name === 'pinch-zoom') {
       this.pinchZoom = newValue !== null;
-    } else if (name === 'event-source') {
-      this.eventSource = newValue === 'window' ? window : this;
     } else {
       super.attributeChangedCallback(name, oldValue, newValue);
     }
@@ -237,13 +222,6 @@ export class GestureFrame extends ScrollableFrame {
 
   constructor() {
     super();
-    this.#setEventListeners();
-  }
-
-  #removeEventListeners = () => {};
-  #setEventListeners() {
-    this.#removeEventListeners();
-    const eventSource: Pick<HTMLElement, 'addEventListener' | 'removeEventListener'> = this.#eventSource;
     if (isTouchEventEnabled) {
       let previousPoint: TouchPoint = { x: 0, y: 0, d: 0 };
       let points: TouchPoint[] = [];
@@ -273,16 +251,10 @@ export class GestureFrame extends ScrollableFrame {
           reservePanZoom();
         }
       };
-      eventSource.addEventListener('touchstart', onTouchStartEnd);
-      eventSource.addEventListener('touchend', onTouchStartEnd);
-      eventSource.addEventListener('touchmove', onTouchMove, nonPassive);
-      this.#removeEventListeners = () => {
-        eventSource.removeEventListener('touchstart', onTouchStartEnd);
-        eventSource.removeEventListener('touchend', onTouchStartEnd);
-        eventSource.removeEventListener('touchmove', onTouchMove, nonPassive);
-      };
+      this.addEventListener('touchstart', onTouchStartEnd);
+      this.addEventListener('touchend', onTouchStartEnd);
+      this.addEventListener('touchmove', onTouchMove, nonPassive);
     } else {
-      let onWheel: (event: WheelEvent) => void;
       {
         let scaleRatio = 1;
         let clientX: number;
@@ -291,14 +263,18 @@ export class GestureFrame extends ScrollableFrame {
           this.zoom(scaleRatio, clientX, clientY);
           scaleRatio = 1;
         });
-        onWheel = (event: WheelEvent) => {
-          if (this.#pinchZoom && event.ctrlKey) {
-            event.preventDefault();
-            scaleRatio *= 0.99 ** event.deltaY;
-            ({ clientX, clientY } = event);
-            reserveZooming();
-          }
-        };
+        this.addEventListener(
+          'wheel',
+          (event: WheelEvent) => {
+            if (this.#pinchZoom && event.ctrlKey) {
+              event.preventDefault();
+              scaleRatio *= 0.99 ** event.deltaY;
+              ({ clientX, clientY } = event);
+              reserveZooming();
+            }
+          },
+          nonPassive,
+        );
       }
       {
         let previousClientX: number;
@@ -324,16 +300,9 @@ export class GestureFrame extends ScrollableFrame {
         };
         const onPointerUp = () => removeEventListener('pointermove', onPointerMove);
 
-        eventSource.addEventListener('wheel', onWheel, nonPassive);
-        eventSource.addEventListener('pointerdown', onPointerDown);
-        eventSource.addEventListener('pointerup', onPointerUp);
-        eventSource.addEventListener('pointercancel', onPointerUp);
-        this.#removeEventListeners = () => {
-          eventSource.removeEventListener('wheel', onWheel, nonPassive);
-          eventSource.removeEventListener('pointerdown', onPointerDown);
-          eventSource.removeEventListener('pointerup', onPointerUp);
-          eventSource.removeEventListener('pointercancel', onPointerUp);
-        };
+        this.addEventListener('pointerdown', onPointerDown);
+        this.addEventListener('pointerup', onPointerUp);
+        this.addEventListener('pointercancel', onPointerUp);
       }
     }
   }

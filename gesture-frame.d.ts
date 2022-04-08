@@ -20,8 +20,6 @@ declare class ScrollableFrame extends HTMLElement {
 export declare class GestureFrame extends ScrollableFrame {
     #private;
     static readonly observedAttributes: readonly string[];
-    get eventSource(): Window | Element | null | undefined;
-    set eventSource(eventSource: Window | Element | null | undefined);
     get pan(): boolean;
     set pan(pan: boolean);
     get pinchZoom(): boolean;
