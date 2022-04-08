@@ -29,8 +29,9 @@ class ScrollableFrame extends HTMLElement {
     return this.#scale;
   }
   set scale(scale) {
+    scale = clamp(scale, this.#minScale, this.#maxScale);
     if (this.#scale !== scale) {
-      this.#setAttribute('scale', (this.#scale = scale = clamp(scale, this.#minScale, this.#maxScale)));
+      this.#setAttribute('scale', (this.#scale = scale));
       this.#content.style.transform = `scale(${scale})`;
     }
   }
