@@ -175,11 +175,18 @@ interface TouchPoint {
   readonly d: number;
 }
 
+const preventDefault = (event: Event) => event.preventDefault();
 const nonPassive: AddEventListenerOptions = { passive: false };
 const isTouchEventEnabled = typeof ontouchend !== 'undefined';
 
 export class GestureFrame extends ScrollableFrame {
-  static override readonly observedAttributes: readonly string[] = [...super.observedAttributes, 'pan-x', 'pan-y', 'pinch-zoom'];
+  static override readonly observedAttributes: readonly string[] = [
+    ...super.observedAttributes,
+    'pan-x',
+    'pan-y',
+    'pan-button',
+    'pinch-zoom',
+  ];
 
   #setBooleanAttribute(name: string, oldValue: boolean, newValue: boolean) {
     newValue = !!newValue;
@@ -205,6 +212,21 @@ export class GestureFrame extends ScrollableFrame {
     this.#panY = this.#setBooleanAttribute('pan-y', this.#panY, panY);
   }
 
+  #panButton = 0;
+  get panButton() {
+    return this.#panButton;
+  }
+  set panButton(panButton) {
+    if (this.#panButton !== panButton) {
+      this.setAttribute('pan-button', (this.#panButton = panButton) as string & number);
+      if (panButton === 2) {
+        this.addEventListener('contextmenu', preventDefault);
+      } else {
+        this.removeEventListener('contextmenu', preventDefault);
+      }
+    }
+  }
+
   #pinchZoom = false;
   get pinchZoom() {
     return this.#pinchZoom;
@@ -218,6 +240,8 @@ export class GestureFrame extends ScrollableFrame {
       this.panX = newValue !== null;
     } else if (name === 'pan-y') {
       this.panY = newValue !== null;
+    } else if (name === 'pan-button') {
+      this.panButton = +newValue || 0;
     } else if (name === 'pinch-zoom') {
       this.pinchZoom = newValue !== null;
     } else {
@@ -304,7 +328,7 @@ export class GestureFrame extends ScrollableFrame {
           reservePanning();
         };
         const onPointerDown = (event: PointerEvent) => {
-          if ((this.#panX || this.#panY) && event.button === 0) {
+          if ((this.#panX || this.#panY) && event.button === this.#panButton) {
             ({ clientX: previousClientX, clientY: previousClientY } = event);
             addEventListener('pointermove', onPointerMove);
           }

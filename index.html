@@ -22,6 +22,10 @@
         <input style="cursor: pointer" type="checkbox" checked onchange="document.querySelector('gesture-frame').pinchZoom=this.checked">
         pinch-zoom
       </label>
+      <label style="cursor: pointer; display: inline-flex; align-items: center">
+        <input style="cursor: pointer" type="checkbox" onchange="document.querySelector('gesture-frame').panButton=this.checked?2:0">
+        pan-button=2
+      </label>
     </div>
     <gesture-frame pan-x pan-y pinch-zoom style="width: 80vw; height: calc(80vh - 32px); margin: auto; box-shadow: 0 1px 4px #888">
       <div style="width: 400px">
