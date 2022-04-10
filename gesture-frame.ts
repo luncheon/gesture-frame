@@ -119,9 +119,9 @@ class ScrollableFrame extends HTMLElement {
   }
 
   connectedCallback() {
-    this.setAttribute('scale', this.#scale as string & number);
-    this.setAttribute('min-scale', this.#minScale as string & number);
-    this.setAttribute('max-scale', this.#maxScale as string & number);
+    this.#setAttribute('scale', this.#scale);
+    this.#setAttribute('min-scale', this.#minScale);
+    this.#setAttribute('max-scale', this.#maxScale);
   }
 
   #memoizedCTMString = '';
