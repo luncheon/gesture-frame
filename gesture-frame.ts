@@ -188,12 +188,12 @@ export class GestureFrame extends ScrollableFrame {
     'pinch-zoom',
   ];
 
-  #setBooleanAttribute(name: string, oldValue: boolean, newValue: boolean) {
+  #setBooleanAttribute(name: string, oldValue: boolean, newValue: boolean, setValue: (value: boolean) => void) {
     newValue = !!newValue;
     if (oldValue !== newValue) {
+      setValue(newValue);
       newValue ? this.setAttribute(name, '') : this.removeAttribute(name);
     }
-    return newValue;
   }
 
   #panX = false;
@@ -201,7 +201,7 @@ export class GestureFrame extends ScrollableFrame {
     return this.#panX;
   }
   set panX(panX) {
-    this.#panX = this.#setBooleanAttribute('pan-x', this.#panX, panX);
+    this.#setBooleanAttribute('pan-x', this.#panX, panX, (panX) => (this.#panX = panX));
   }
 
   #panY = false;
@@ -209,7 +209,7 @@ export class GestureFrame extends ScrollableFrame {
     return this.#panY;
   }
   set panY(panY) {
-    this.#panY = this.#setBooleanAttribute('pan-y', this.#panY, panY);
+    this.#setBooleanAttribute('pan-y', this.#panY, panY, (panY) => (this.#panY = panY));
   }
 
   #panButton = 0;
@@ -232,7 +232,7 @@ export class GestureFrame extends ScrollableFrame {
     return this.#pinchZoom;
   }
   set pinchZoom(pinchZoom) {
-    this.#pinchZoom = this.#setBooleanAttribute('pinch-zoom', this.#pinchZoom, pinchZoom);
+    this.#setBooleanAttribute('pinch-zoom', this.#pinchZoom, pinchZoom, (pinchZoom) => (this.#pinchZoom = pinchZoom));
   }
 
   override attributeChangedCallback(name: string, oldValue: string, newValue: string) {
