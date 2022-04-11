@@ -330,10 +330,11 @@ export class GestureFrame extends ScrollableFrame {
         const onPointerDown = (event: PointerEvent) => {
           if ((this.#panX || this.#panY) && event.button === this.#panButton) {
             ({ clientX: previousClientX, clientY: previousClientY } = event);
-            addEventListener('pointermove', onPointerMove);
+            this.setPointerCapture(event.pointerId);
+            this.addEventListener('pointermove', onPointerMove);
           }
         };
-        const onPointerUp = () => removeEventListener('pointermove', onPointerMove);
+        const onPointerUp = () => this.removeEventListener('pointermove', onPointerMove);
 
         this.addEventListener('pointerdown', onPointerDown);
         this.addEventListener('pointerup', onPointerUp);
