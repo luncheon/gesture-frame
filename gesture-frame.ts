@@ -159,13 +159,12 @@ class ScrollableFrame extends HTMLElement {
   zoom(scaleRatio: number, originClientX: number, originClientY: number) {
     const previousScale = this.#scale;
     const scale = clamp(previousScale * scaleRatio, this.#minScale, this.#maxScale);
-    if (scale === previousScale) {
-      return;
+    if (scale !== previousScale) {
+      const offsetScale = scale / previousScale - 1;
+      const topLeft = this.#topLeft.getBoundingClientRect();
+      this.scale = scale;
+      this.setOffset(this.#offsetX + offsetScale * (topLeft.x - originClientX), this.#offsetY + offsetScale * (topLeft.y - originClientY));
     }
-    const offsetScale = scale / previousScale - 1;
-    const topLeft = this.#topLeft.getBoundingClientRect();
-    this.scale = scale;
-    this.setOffset(this.#offsetX + offsetScale * (topLeft.x - originClientX), this.#offsetY + offsetScale * (topLeft.y - originClientY));
   }
 }
 
