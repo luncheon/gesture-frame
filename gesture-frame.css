@@ -4,10 +4,10 @@
   overflow: auto;
 }
 
-:where(gesture-frame[pan-x], gesture-frame[pan-y]) {
+:where(gesture-frame:is([pan-x], [pan-y])) {
   cursor: grab;
 }
-:where(gesture-frame[pan-x]:active, gesture-frame[pan-y]:active) {
+:where(gesture-frame:is([pan-x], [pan-y]):active) {
   cursor: grabbing;
 }
 
