@@ -1,7 +1,8 @@
 {
   "name": "gesture-frame",
   "version": "0.0.0",
-  "description": "",
+  "description": "A Web Component that supports `pinch-zoom` and `pan` for PC and Touch Devices.",
+  "license": "WTFPL",
   "repository": "luncheon/gesture-frame",
   "type": "module",
   "main": "gesture-frame.js",
