@@ -1,16 +1,24 @@
 # gesture-frame
 
-A Web Component that supports `pinch-zoom` and `pan` for PC and Touch Devices.
+A Web Component that supports `pinch-zoom` and `pan` for PC and touch devices.
 
 Demo: https://luncheon.github.io/gesture-frame/
+
+## Installation
+
+```
+npm i gesture-frame
+```
 
 ## Usage
 
 ```html
-<link rel="stylesheet" href="gesture-frame/gesture-frame.css" />
+<link rel="stylesheet" href="gesture-frame/gesture-frame.css">
 <script type="module" src="gesture-frame/gesture-frame.js"></script>
 
-<gesture-frame pan-x pan-y pinch-zoom><!-- Content --></gesture-frame>
+<gesture-frame pan-x pan-y pinch-zoom min-scale="0.01" max-scale="1000" scale="2" offset-x="20" offset-y="20">
+  <!-- Content -->
+</gesture-frame>
 ```
 
 or using module bundler:
@@ -20,6 +28,8 @@ import 'gesture-frame/gesture-frame.css';
 import 'gesture-frame/gesture-frame.js';
 
 const gestureFrame = document.createElement('gesture-frame');
+gestureFrame.pinchZoom = true;
+gestureFrame.minScale = 0.01;
 ```
 
 If you use TypeScript and need the custom element type, import it separately.
@@ -63,3 +73,8 @@ These attributes can be observed using [`MutationObserver`](https://developer.mo
 ## License
 
 [WTFPL](http://www.wtfpl.net)
+
+## Similar Libraries
+
+- https://github.com/GoogleChromeLabs/pinch-zoom
+- https://github.com/worka/vanilla-js-wheel-zoom
