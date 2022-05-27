@@ -32,12 +32,12 @@ gestureFrame.pinchZoom = true;
 gestureFrame.minScale = 0.01;
 ```
 
-If you use TypeScript and need the custom element type, import it separately.
+If you use TypeScript and need the custom element type and the [`preserveValueImports`](https://www.typescriptlang.org/tsconfig#preserveValueImports) option is not set to `true`, import it separately.
 
 ```ts
 import { GestureFrame } from 'gesture-frame';
 import 'gesture-frame/gesture-frame.css';
-import 'gesture-frame/gesture-frame.js';
+import 'gesture-frame/gesture-frame.js'; // when { "preserveValueImports": true }, this line is not necessary.
 
 // type usage
 const gestureFrame: GestureFrame = document.createElement('gesture-frame');
