@@ -253,14 +253,15 @@ export class GestureFrame extends ScrollableFrame {
     if (isTouchEventEnabled) {
       let previousPoint: TouchPoint = { x: 0, y: 0, d: 0 };
       let points: TouchPoint[] = [];
+      let multiTouchPanning: boolean | undefined;
       const [reservePanZoom, cancelPanZoom] = throttle(() => {
         const x = averageBy(points, (p) => p.x);
         const y = averageBy(points, (p) => p.y);
         const d = previousPoint.d && averageBy(points, (p) => p.d);
         d && this.#pinchZoom && this.zoom(d / previousPoint.d, x, y);
         this.setOffset(
-          this.#panX ? this.offsetX + x - previousPoint.x : this.offsetX,
-          this.#panY ? this.offsetY + y - previousPoint.y : this.offsetY,
+          this.#panX || multiTouchPanning ? this.offsetX + x - previousPoint.x : this.offsetX,
+          this.#panY || multiTouchPanning ? this.offsetY + y - previousPoint.y : this.offsetY,
         );
         points = [];
         previousPoint = { x, y, d };
@@ -273,7 +274,9 @@ export class GestureFrame extends ScrollableFrame {
       const onTouchStartEnd = (event: TouchEvent) => {
         cancelPanZoom();
         points = [];
-        event.touches.length !== 0 && (previousPoint = calculatePoint(event));
+        const touchesLength = event.touches.length;
+        multiTouchPanning = this.#pinchZoom && touchesLength > 1;
+        touchesLength && (previousPoint = calculatePoint(event));
       };
       const onTouchMove = (event: TouchEvent) => {
         if (event.touches.length === 1 ? this.#panX || this.#panY : this.#pinchZoom) {
