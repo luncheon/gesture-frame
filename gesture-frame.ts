@@ -156,7 +156,7 @@ class ScrollableFrame extends HTMLElement {
     this.scrollTo(clampZero(-x), clampZero(-y));
   }
 
-  zoom(scaleRatio: number, originClientX: number, originClientY: number) {
+  _zoom(scaleRatio: number, originClientX: number, originClientY: number) {
     const previousScale = this.#scale;
     const scale = clamp(previousScale * scaleRatio, this.#minScale, this.#maxScale);
     if (scale !== previousScale) {
@@ -167,6 +167,23 @@ class ScrollableFrame extends HTMLElement {
     }
   }
 
+  /**
+   * Zoom keeping the apparent position of `(origin.x, origin.y)`. Zoom in when `scaleRatio > 1` and zoom out when `scaleRatio < 1`. `origin.x` and `origin.y` can be specified as a `number` (px) or a `` `${number}%` ``. The default value for both is `"50%"` (center).
+   */
+  zoom(scaleRatio: number, origin?: { readonly x?: number | `${number}%`; readonly y?: number | `${number}%` }) {
+    const rect = this.getBoundingClientRect();
+    const x = origin?.x;
+    const y = origin?.y;
+    this._zoom(
+      scaleRatio,
+      rect.x + (x === undefined ? rect.width * 0.5 : typeof x === 'number' ? x : rect.width * parseFloat(x) * 0.01),
+      rect.y + (y === undefined ? rect.height * 0.5 : typeof y === 'number' ? y : rect.height * parseFloat(y) * 0.01),
+    );
+  }
+
+  /**
+   * Adjust the scale and offset to display the entire content.
+   */
   fit(options?: { readonly marginX?: number; readonly marginY?: number }) {
     const { offsetWidth: width, offsetHeight: height } = this;
     const { offsetWidth: contentWidth, offsetHeight: contentHeight } = this.#content;
@@ -183,12 +200,18 @@ class ScrollableFrame extends HTMLElement {
     }
   }
 
+  /**
+   * Adjust the scale and offset-x to fit the width.
+   */
   fitX(options?: { readonly margin?: number }) {
     const margin = options?.margin ?? 0;
     this.scale = (this.offsetWidth - margin - margin) / this.#content.offsetWidth;
     this.offsetX = margin;
   }
 
+  /**
+   * Adjust the scale and offset-y to fit the height.
+   */
   fitY(options?: { readonly margin?: number }) {
     const margin = options?.margin ?? 0;
     this.scale = (this.offsetHeight - margin - margin) / this.#content.offsetHeight;
@@ -286,7 +309,7 @@ export class GestureFrame extends ScrollableFrame {
         const x = averageBy(points, (p) => p.x);
         const y = averageBy(points, (p) => p.y);
         const d = previousPoint.d && averageBy(points, (p) => p.d);
-        d && this.#pinchZoom && this.zoom(d / previousPoint.d, x, y);
+        d && this.#pinchZoom && this._zoom(d / previousPoint.d, x, y);
         this.setOffset(
           this.#panX || multiTouchPanning ? this.offsetX + x - previousPoint.x : this.offsetX,
           this.#panY || multiTouchPanning ? this.offsetY + y - previousPoint.y : this.offsetY,
@@ -322,7 +345,7 @@ export class GestureFrame extends ScrollableFrame {
         let clientX: number;
         let clientY: number;
         const [reserveZooming] = throttle(() => {
-          this.zoom(scaleRatio, clientX, clientY);
+          this._zoom(scaleRatio, clientX, clientY);
           scaleRatio = 1;
         });
         this.addEventListener(
