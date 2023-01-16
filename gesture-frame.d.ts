@@ -16,6 +16,16 @@ declare class ScrollableFrame extends HTMLElement {
     connectedCallback(): void;
     setOffset(offsetX: number, offsetY: number): void;
     zoom(scaleRatio: number, originClientX: number, originClientY: number): void;
+    fit(options?: {
+        readonly marginX?: number;
+        readonly marginY?: number;
+    }): void;
+    fitX(options?: {
+        readonly margin?: number;
+    }): void;
+    fitY(options?: {
+        readonly margin?: number;
+    }): void;
 }
 export declare class GestureFrame extends ScrollableFrame {
     #private;

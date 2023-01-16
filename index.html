@@ -26,6 +26,12 @@
         <input style="cursor: pointer" type="checkbox" onchange="document.querySelector('gesture-frame').panButton=this.checked?2:0">
         pan-button=2
       </label>
+      <div>
+        <button type="button" onclick="document.querySelector('gesture-frame').fit()">fit()</button>
+        <button type="button" onclick="document.querySelector('gesture-frame').fit({ marginX: 40, marginY: 20 })">fit({ marginX: 40, marginY: 20 })</button>
+        <button type="button" onclick="document.querySelector('gesture-frame').fitX({ margin: 20 })">fitX({ margin: 20 })</button>
+        <button type="button" onclick="document.querySelector('gesture-frame').fitY({ margin: 20 })">fitY({ margin: 20 })</button>
+      </div>
       <p style="margin: 0">Other attributes can be set in DevTools.</p>
     </div>
 

@@ -166,6 +166,34 @@ class ScrollableFrame extends HTMLElement {
       this.setOffset(this.#offsetX + offsetScale * (topLeft.x - originClientX), this.#offsetY + offsetScale * (topLeft.y - originClientY));
     }
   }
+
+  fit(options?: { readonly marginX?: number; readonly marginY?: number }) {
+    const { offsetWidth: width, offsetHeight: height } = this;
+    const { offsetWidth: contentWidth, offsetHeight: contentHeight } = this.#content;
+    const marginX = options?.marginX ?? 0;
+    const marginY = options?.marginY ?? 0;
+    const widthBasedScale = (width - marginX - marginX) / contentWidth;
+    const heightBasedScale = (height - marginY - marginY) / contentHeight;
+    if (widthBasedScale < heightBasedScale) {
+      this.scale = widthBasedScale;
+      this.setOffset(marginX, Math.floor(height - contentHeight * widthBasedScale) / 2);
+    } else {
+      this.scale = heightBasedScale;
+      this.setOffset(Math.floor(width - contentWidth * heightBasedScale) / 2, marginY);
+    }
+  }
+
+  fitX(options?: { readonly margin?: number }) {
+    const margin = options?.margin ?? 0;
+    this.scale = (this.offsetWidth - margin - margin) / this.#content.offsetWidth;
+    this.offsetX = margin;
+  }
+
+  fitY(options?: { readonly margin?: number }) {
+    const margin = options?.margin ?? 0;
+    this.scale = (this.offsetHeight - margin - margin) / this.#content.offsetHeight;
+    this.offsetY = margin;
+  }
 }
 
 interface TouchPoint {
