@@ -1,4 +1,4 @@
-# gesture-frame
+# &lt;gesture-frame&gt;
 
 A Web Component that supports `pinch-zoom` and `pan` for PC and touch devices.
 
@@ -30,6 +30,7 @@ import 'gesture-frame/gesture-frame.js';
 const gestureFrame = document.createElement('gesture-frame');
 gestureFrame.pinchZoom = true;
 gestureFrame.minScale = 0.01;
+gestureFrame.fit({ marginX: 20, marginY: 20 });
 ```
 
 If you use TypeScript and need the custom element type and the [`preserveValueImports`](https://www.typescriptlang.org/tsconfig#preserveValueImports) option is not set to `true`, import it separately.
@@ -47,28 +48,46 @@ if (gestureFrame instanceof GestureFrame) {
 }
 ```
 
-## Interface: HTML Attributes and JavaScript Properties
+## HTML Attributes and DOM Element Properties
 
 ### States (auto-updated by panning and zooming)
 
-| HTML Attribute | JavaScript Property | Default | Description  |
-| -------------- | ------------------- | ------- | ------------ |
-| `scale`        | `scale`             | `1`     | Scale.       |
-| `offset-x`     | `offsetX`           | `0`     | Left margin. |
-| `offset-y`     | `offsetY`           | `0`     | Top margin.  |
+| HTML Attribute | DOM Element Property | Default | Description  |
+| -------------- | -------------------- | ------- | ------------ |
+| `scale`        | `scale`              | `1`     | Scale.       |
+| `offset-x`     | `offsetX`            | `0`     | Left margin. |
+| `offset-y`     | `offsetY`            | `0`     | Top margin.  |
 
 These attributes can be observed using [`MutationObserver`](https://developer.mozilla.org/docs/Web/API/MutationObserver).
 
 ### Options
 
-| HTML Attribute           | JavaScript Property | Default | Description                                                                                     |
-| ------------------------ | ------------------- | ------- | ----------------------------------------------------------------------------------------------- |
-| `min-scale`              | `minScale`          | `0.1`   | Minimum scale.                                                                                  |
-| `max-scale`              | `maxScale`          | `100`   | Maximum scale.                                                                                  |
-| `pan-x` (existence)      | `panX`              | `false` | Whether horizontal panning is enabled.                                                          |
-| `pan-y` (existence)      | `panY`              | `false` | Whether vertical panning is enabled.                                                            |
-| `pinch-zoom` (existence) | `pinchZoom`         | `false` | Whether two-finger panning and zooming is enabled. For PC, follows `Ctrl + Wheel` events.       |
-| `pan-button`             | `panButton`         | `0`     | [Mouse button](https://developer.mozilla.org/docs/Web/API/MouseEvent/button) for panning on PC. |
+| HTML Attribute           | DOM Element Property | Default | Description                                                                                     |
+| ------------------------ | -------------------- | ------- | ----------------------------------------------------------------------------------------------- |
+| `min-scale`              | `minScale`           | `0.1`   | Minimum scale.                                                                                  |
+| `max-scale`              | `maxScale`           | `100`   | Maximum scale.                                                                                  |
+| `pan-x` (existence)      | `panX`               | `false` | Whether horizontal panning is enabled.                                                          |
+| `pan-y` (existence)      | `panY`               | `false` | Whether vertical panning is enabled.                                                            |
+| `pinch-zoom` (existence) | `pinchZoom`          | `false` | Whether two-finger panning and zooming is enabled. For PC, follows `Ctrl + Wheel` events.       |
+| `pan-button`             | `panButton`          | `0`     | [Mouse button](https://developer.mozilla.org/docs/Web/API/MouseEvent/button) for panning on PC. |
+
+## DOM Element API
+
+### `fit(options?: { marginX?: number, marginY?: number }): void`
+
+Adjust the scale and offset to display the entire content.
+
+### `fitX(options?: { margin?: number }): void`
+
+Adjust the scale and offset-x to fit the width.
+
+### `fitY(options?: { margin?: number }): void`
+
+Adjust the scale and offset-y to fit the height.
+
+### ``zoom(scaleRatio: number, origin?: { x?: number | `${number}%`, y?: number | `${number}%`): void``
+
+Zoom keeping the apparent position of `(origin.x, origin.y)`. Zoom in when `scaleRatio > 1` and zoom out when `scaleRatio < 1`. `origin.x` and `origin.y` can be specified as a `number` (px) or a `` `${number}%` ``. The default value for both is `"50%"` (center).
 
 ## License
 
