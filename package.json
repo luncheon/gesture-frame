@@ -20,11 +20,11 @@
     "trailingComma": "all"
   },
   "scripts": {
-    "start": "esbuild --minify --format=esm --sourcemap --outdir=. --serve=0.0.0.0:8000 --servedir=. gesture-frame.ts",
-    "build": "tsc -p . && esbuild --minify --format=esm --outdir=. gesture-frame.ts"
+    "start": "esbuild --format=esm --sourcemap --outdir=. --serve=0.0.0.0:8000 --servedir=. gesture-frame.ts",
+    "build": "tsc -p . && esbuild --format=esm --outdir=. gesture-frame.ts"
   },
   "devDependencies": {
-    "esbuild": "^0.17.0",
+    "esbuild": "^0.17.2",
     "prettier": "^2.8.3",
     "typescript": "^4.9.4"
   }
