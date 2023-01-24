@@ -70,6 +70,7 @@ These attributes can be observed using [`MutationObserver`](https://developer.mo
 | `pan-y` (existence)      | `panY`               | `false` | Whether vertical panning is enabled.                                                            |
 | `pinch-zoom` (existence) | `pinchZoom`          | `false` | Whether two-finger panning and zooming is enabled. For PC, follows `Ctrl + Wheel` events.       |
 | `pan-button`             | `panButton`          | `0`     | [Mouse button](https://developer.mozilla.org/docs/Web/API/MouseEvent/button) for panning on PC. |
+| `anchor-left`<br>`anchor-right`<br>`anchor-top`<br>`anchor-bottom`<br>(existence) | `anchorLeft`<br>`anchorRight`<br>`anchorTop`<br>`anchorBottom`           | `false`<br>`false`<br>`false`<br>`false`   | Edges to which the content is bound. When thw `window` is resized, the content is resized while keeping the distance from the bound edges.<br>\* Only up to three anchors can be set; if all anchors are set, only the left and right anchors will be enabled.<br>\* It does not use `ResizeObserver` and listens `resize` event. `ResizeObserver` is asynchronous and seems to be throttled, so resizing can be delayed or misaligned. |
 
 ## DOM Element API
 

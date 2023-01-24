@@ -171,6 +171,9 @@ class ScrollableFrame extends HTMLElement {
    * Zoom keeping the apparent position of `(origin.x, origin.y)`. Zoom in when `scaleRatio > 1` and zoom out when `scaleRatio < 1`. `origin.x` and `origin.y` can be specified as a `number` (px) or a `` `${number}%` ``. The default value for both is `"50%"` (center).
    */
   zoom(scaleRatio: number, origin?: { readonly x?: number | `${number}%`; readonly y?: number | `${number}%` }) {
+    if (scaleRatio === 1) {
+      return;
+    }
     const rect = this.getBoundingClientRect();
     const x = origin?.x;
     const y = origin?.y;
@@ -236,6 +239,10 @@ export class GestureFrame extends ScrollableFrame {
     'pan-y',
     'pan-button',
     'pinch-zoom',
+    'anchor-left',
+    'anchor-right',
+    'anchor-top',
+    'anchor-bottom',
   ];
 
   #setBooleanAttribute(name: string, oldValue: boolean, newValue: boolean, setValue: (value: boolean) => void) {
@@ -285,6 +292,72 @@ export class GestureFrame extends ScrollableFrame {
     this.#setBooleanAttribute('pinch-zoom', this.#pinchZoom, pinchZoom, (pinchZoom) => (this.#pinchZoom = pinchZoom));
   }
 
+  #anchorLeft = false;
+  get anchorLeft() {
+    return this.#anchorLeft;
+  }
+  set anchorLeft(anchorLeft) {
+    this.#setBooleanAttribute('anchor-left', this.#anchorLeft, anchorLeft, (anchorLeft) => (this.#anchorLeft = anchorLeft));
+  }
+
+  #anchorRight = false;
+  get anchorRight() {
+    return this.#anchorRight;
+  }
+  set anchorRight(anchorRight) {
+    this.#setBooleanAttribute('anchor-right', this.#anchorRight, anchorRight, (anchorRight) => (this.#anchorRight = anchorRight));
+  }
+
+  #anchorTop = false;
+  get anchorTop() {
+    return this.#anchorTop;
+  }
+  set anchorTop(anchorTop) {
+    this.#setBooleanAttribute('anchor-top', this.#anchorTop, anchorTop, (anchorTop) => (this.#anchorTop = anchorTop));
+  }
+
+  #anchorBottom = false;
+  get anchorBottom() {
+    return this.#anchorBottom;
+  }
+  set anchorBottom(anchorBottom) {
+    this.#setBooleanAttribute('anchor-bottom', this.#anchorBottom, anchorBottom, (anchorBottom) => (this.#anchorBottom = anchorBottom));
+  }
+
+  #w0 = -1;
+  #h0 = -1;
+  #onResize = () => {
+    const { offsetWidth: w, offsetHeight: h } = this;
+    const w0 = this.#w0;
+    const h0 = this.#h0;
+    if (w0 !== -1) {
+      const { anchorLeft, anchorRight, anchorTop, anchorBottom } = this;
+      const anchorCenterX = anchorLeft === anchorRight;
+      const anchorCenterY = anchorTop === anchorBottom;
+      if (anchorLeft && anchorRight) {
+        this.zoom(
+          w / w0,
+          anchorCenterY
+            ? undefined
+            : { y: this.offsetY + (anchorTop ? 0 : ((this.firstElementChild as HTMLElement)?.offsetHeight ?? 0) * this.scale) },
+        );
+      } else if (anchorTop && anchorBottom) {
+        this.zoom(
+          h / h0,
+          anchorCenterX
+            ? undefined
+            : { x: this.offsetX + (anchorLeft ? 0 : ((this.firstElementChild as HTMLElement)?.offsetWidth ?? 0) * this.scale) },
+        );
+      }
+      this.setOffset(
+        this.offsetX + (anchorCenterX ? (w - w0) / 2 : anchorLeft ? 0 : w - w0),
+        this.offsetY + (anchorCenterY ? (h - h0) / 2 : anchorTop ? 0 : h - h0),
+      );
+    }
+    this.#w0 = w;
+    this.#h0 = h;
+  };
+
   override attributeChangedCallback(name: string, oldValue: string, newValue: string) {
     if (name === 'pan-x') {
       this.panX = newValue !== null;
@@ -294,9 +367,25 @@ export class GestureFrame extends ScrollableFrame {
       this.panButton = +newValue || 0;
     } else if (name === 'pinch-zoom') {
       this.pinchZoom = newValue !== null;
+    } else if (name === 'anchor-left') {
+      this.anchorLeft = newValue !== null;
+    } else if (name === 'anchor-right') {
+      this.anchorRight = newValue !== null;
+    } else if (name === 'anchor-top') {
+      this.anchorTop = newValue !== null;
+    } else if (name === 'anchor-bottom') {
+      this.anchorBottom = newValue !== null;
     } else {
       super.attributeChangedCallback(name, oldValue, newValue);
     }
+  }
+
+  override connectedCallback(): void {
+    addEventListener('resize', this.#onResize);
+  }
+
+  disconnectedCallback(): void {
+    removeEventListener('resize', this.#onResize);
   }
 
   constructor() {

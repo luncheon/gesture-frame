@@ -54,7 +54,17 @@ export declare class GestureFrame extends ScrollableFrame {
     set panButton(panButton: number);
     get pinchZoom(): boolean;
     set pinchZoom(pinchZoom: boolean);
+    get anchorLeft(): boolean;
+    set anchorLeft(anchorLeft: boolean);
+    get anchorRight(): boolean;
+    set anchorRight(anchorRight: boolean);
+    get anchorTop(): boolean;
+    set anchorTop(anchorTop: boolean);
+    get anchorBottom(): boolean;
+    set anchorBottom(anchorBottom: boolean);
     attributeChangedCallback(name: string, oldValue: string, newValue: string): void;
+    connectedCallback(): void;
+    disconnectedCallback(): void;
     constructor();
 }
 export {};
