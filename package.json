@@ -1,6 +1,6 @@
 {
   "name": "gesture-frame",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "A Web Component that supports `pinch-zoom` and `pan` for PC and Touch Devices.",
   "license": "WTFPL",
   "repository": "luncheon/gesture-frame",
@@ -24,7 +24,7 @@
     "build": "tsc -p . && esbuild --format=esm --outdir=. gesture-frame.ts"
   },
   "devDependencies": {
-    "esbuild": "^0.17.2",
+    "esbuild": "^0.17.4",
     "prettier": "^2.8.3",
     "typescript": "^4.9.4"
   }
