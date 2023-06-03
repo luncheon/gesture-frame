@@ -403,31 +403,57 @@ class GestureFrame extends ScrollableFrame {
         );
       }
       {
-        let previousClientX;
-        let previousClientY;
-        let clientX;
-        let clientY;
-        const [reservePanning] = throttle(() => {
-          this.setOffset(
-            this.#panX ? this.offsetX + clientX - previousClientX : this.offsetX,
-            this.#panY ? this.offsetY + clientY - previousClientY : this.offsetY
-          );
-          previousClientX = clientX;
-          previousClientY = clientY;
+        const pointers = [];
+        const [requestPanZoom] = throttle(() => {
+          const [p1, p2] = pointers;
+          if (p1 && p2 && this.#pinchZoom) {
+            const x = (p1.cx + p2.cx) / 2;
+            const y = (p1.cy + p2.cy) / 2;
+            const cd = Math.hypot(p1.cx - p2.cx, p1.cy - p2.cy);
+            const pd = Math.hypot(p1.px - p2.px, p1.py - p2.py);
+            cd && pd && this._zoom(cd / pd, x, y);
+            this.setOffset(this.offsetX + x - (p1.px + p2.px) / 2, this.offsetY + y - (p1.py + p2.py) / 2);
+          } else if (p1 && (this.#panX || this.#panY) && p1.b === this.#panButton) {
+            this.setOffset(
+              this.#panX ? this.offsetX + p1.cx - p1.px : this.offsetX,
+              this.#panY ? this.offsetY + p1.cy - p1.py : this.offsetY
+            );
+          }
+          pointers.forEach((pointer) => {
+            pointer.px = pointer.cx;
+            pointer.py = pointer.cy;
+          });
         });
         const onPointerMove = (event) => {
           event.preventDefault();
-          ({ clientX, clientY } = event);
-          reservePanning();
+          const pointer = pointers.find((p) => p.id === event.pointerId);
+          if (pointer) {
+            pointer.cx = event.clientX;
+            pointer.cy = event.clientY;
+            requestPanZoom();
+          }
         };
         const onPointerDown = (event) => {
-          if ((this.#panX || this.#panY) && event.button === this.#panButton) {
-            ({ clientX: previousClientX, clientY: previousClientY } = event);
+          if ((this.#panX || this.#panY) && event.button === this.#panButton || this.#pinchZoom && event.button === 0) {
+            pointers.push({
+              id: event.pointerId,
+              b: event.button,
+              cx: event.clientX,
+              cy: event.clientY,
+              px: event.clientX,
+              py: event.clientY
+            });
             this.setPointerCapture(event.pointerId);
             this.addEventListener("pointermove", onPointerMove);
           }
         };
-        const onPointerUp = () => this.removeEventListener("pointermove", onPointerMove);
+        const onPointerUp = (event) => {
+          const index = pointers.findIndex((p) => p.id === event.pointerId);
+          if (index !== -1) {
+            pointers.splice(index, 1);
+            pointers.length || this.removeEventListener("pointermove", onPointerMove);
+          }
+        };
         this.addEventListener("pointerdown", onPointerDown);
         this.addEventListener("pointerup", onPointerUp);
         this.addEventListener("pointercancel", onPointerUp);
