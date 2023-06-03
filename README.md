@@ -33,12 +33,18 @@ gestureFrame.minScale = 0.01;
 gestureFrame.fit({ marginX: 20, marginY: 20 });
 ```
 
-If you use TypeScript and need the custom element type and the [`preserveValueImports`](https://www.typescriptlang.org/tsconfig#preserveValueImports) option is not set to `true`, import it separately.
+If you use TypeScript with *import elision* and need the custom element type, import it separately.
+
+See:
+
+- [`verbatimModuleSyntax` option](https://www.typescriptlang.org/tsconfig#verbatimModuleSyntax)
+- [`preserveValueImports` option (deprecated)](https://www.typescriptlang.org/tsconfig#preserveValueImports)
+- [`importsNotUsedAsValues` option (deprecated)](https://www.typescriptlang.org/tsconfig#importsNotUsedAsValues)
 
 ```ts
 import { GestureFrame } from 'gesture-frame';
 import 'gesture-frame/gesture-frame.css';
-import 'gesture-frame/gesture-frame.js'; // when { "preserveValueImports": true }, this line is not necessary.
+import 'gesture-frame/gesture-frame.js'; // when *import elision* is disabled, this line is not necessary.
 
 // type usage
 const gestureFrame: GestureFrame = document.createElement('gesture-frame');
