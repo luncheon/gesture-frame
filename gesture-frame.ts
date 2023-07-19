@@ -452,7 +452,7 @@ export class GestureFrame extends ScrollableFrame {
       }
       {
         // do not use movementX/Y, that do not aware page zoom
-        const pointers: {
+        let pointers: {
           readonly id: PointerEvent['pointerId'];
           readonly b: PointerEvent['button'];
           cx: number;
@@ -481,15 +481,34 @@ export class GestureFrame extends ScrollableFrame {
           });
         });
         const onPointerMove = (event: PointerEvent) => {
-          event.preventDefault();
+          // switching tab while dragging prevents handling of pointerup events.
+          if (event.buttons === 0) {
+            pointers = [];
+            removeEventListeners();
+            return;
+          }
           const pointer = pointers.find((p) => p.id === event.pointerId);
           if (pointer) {
+            (this.#panX || this.#panY || (this.#pinchZoom && pointers.length >= 2)) && event.preventDefault();
             pointer.cx = event.clientX;
             pointer.cy = event.clientY;
             requestPanZoom();
           }
         };
-        const onPointerDown = (event: PointerEvent) => {
+        const onPointerUp = (event: PointerEvent) => {
+          const index = pointers.findIndex((p) => p.id === event.pointerId);
+          if (index !== -1) {
+            pointers.splice(index, 1);
+            pointers.length || removeEventListeners();
+          }
+        };
+        const removeEventListeners = () => {
+          removeEventListener('pointermove', onPointerMove);
+          removeEventListener('pointerup', onPointerUp, true);
+          removeEventListener('pointercancel', onPointerUp, true);
+        };
+
+        this.addEventListener('pointerdown', (event) => {
           if (((this.#panX || this.#panY) && event.button === this.#panButton) || (this.#pinchZoom && event.button === 0)) {
             pointers.push({
               id: event.pointerId,
@@ -499,21 +518,11 @@ export class GestureFrame extends ScrollableFrame {
               px: event.clientX,
               py: event.clientY,
             });
-            this.setPointerCapture(event.pointerId);
-            this.addEventListener('pointermove', onPointerMove);
+            addEventListener('pointermove', onPointerMove);
+            addEventListener('pointerup', onPointerUp, true);
+            addEventListener('pointercancel', onPointerUp, true);
           }
-        };
-        const onPointerUp = (event: PointerEvent) => {
-          const index = pointers.findIndex((p) => p.id === event.pointerId);
-          if (index !== -1) {
-            pointers.splice(index, 1);
-            pointers.length || this.removeEventListener('pointermove', onPointerMove);
-          }
-        };
-
-        this.addEventListener('pointerdown', onPointerDown);
-        this.addEventListener('pointerup', onPointerUp);
-        this.addEventListener('pointercancel', onPointerUp);
+        });
       }
     }
   }
