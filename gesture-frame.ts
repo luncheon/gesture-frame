@@ -112,16 +112,16 @@ class ScrollableFrame extends HTMLElement {
     this.#isAttributeChangedCallbackEnabled = 1;
   }
 
-  attributeChangedCallback(name: string, oldValue: string, newValue: string) {
-    if (this.#isAttributeChangedCallbackEnabled && oldValue !== newValue) {
-      this[name.replace(/-([a-z])/g, (_, $1) => $1.toUpperCase()) as 'scale' | 'minScale' | 'maxScale' | 'offsetX' | 'offsetY'] = +newValue;
-    }
-  }
-
   connectedCallback() {
     this.#setAttribute('scale', this.#scale);
     this.#setAttribute('min-scale', this.#minScale);
     this.#setAttribute('max-scale', this.#maxScale);
+  }
+
+  attributeChangedCallback(name: string, oldValue: string, newValue: string) {
+    if (this.#isAttributeChangedCallbackEnabled && oldValue !== newValue) {
+      this[name.replace(/-([a-z])/g, (_, $1) => $1.toUpperCase()) as 'scale' | 'minScale' | 'maxScale' | 'offsetX' | 'offsetY'] = +newValue;
+    }
   }
 
   #memoizedCTMString = '';
@@ -324,39 +324,46 @@ export class GestureFrame extends ScrollableFrame {
     this.#setBooleanAttribute('anchor-bottom', this.#anchorBottom, anchorBottom, (anchorBottom) => (this.#anchorBottom = anchorBottom));
   }
 
-  #w0 = -1;
-  #h0 = -1;
-  #onResize = () => {
-    const { offsetWidth: w, offsetHeight: h } = this;
+  #w0!: number;
+  #h0!: number;
+  #resizeObserver = new ResizeObserver(() => {
+    const { offsetWidth: w, offsetHeight: h, anchorLeft, anchorRight, anchorTop, anchorBottom } = this;
     const w0 = this.#w0;
     const h0 = this.#h0;
-    if (w0 !== -1) {
-      const { anchorLeft, anchorRight, anchorTop, anchorBottom } = this;
-      const anchorCenterX = anchorLeft === anchorRight;
-      const anchorCenterY = anchorTop === anchorBottom;
-      if (anchorLeft && anchorRight) {
-        this.zoom(
-          w / w0,
-          anchorCenterY
-            ? undefined
-            : { y: this.offsetY + (anchorTop ? 0 : ((this.firstElementChild as HTMLElement)?.offsetHeight ?? 0) * this.scale) },
-        );
-      } else if (anchorTop && anchorBottom) {
-        this.zoom(
-          h / h0,
-          anchorCenterX
-            ? undefined
-            : { x: this.offsetX + (anchorLeft ? 0 : ((this.firstElementChild as HTMLElement)?.offsetWidth ?? 0) * this.scale) },
-        );
-      }
-      this.setOffset(
-        this.offsetX + (anchorCenterX ? (w - w0) / 2 : anchorLeft ? 0 : w - w0),
-        this.offsetY + (anchorCenterY ? (h - h0) / 2 : anchorTop ? 0 : h - h0),
+    const anchorCenterX = anchorLeft === anchorRight;
+    const anchorCenterY = anchorTop === anchorBottom;
+    this.setOffset(
+      this.offsetX + (anchorCenterX ? (w - w0) / 2 : anchorLeft ? 0 : w - w0),
+      this.offsetY + (anchorCenterY ? (h - h0) / 2 : anchorTop ? 0 : h - h0),
+    );
+    if (anchorLeft && anchorRight) {
+      this.zoom(
+        w / w0,
+        anchorCenterY
+          ? undefined
+          : { y: this.offsetY + (anchorTop ? 0 : ((this.firstElementChild as HTMLElement)?.offsetHeight ?? 0) * this.scale) },
+      );
+    } else if (anchorTop && anchorBottom) {
+      this.zoom(
+        h / h0,
+        anchorCenterX
+          ? undefined
+          : { x: this.offsetX + (anchorLeft ? 0 : ((this.firstElementChild as HTMLElement)?.offsetWidth ?? 0) * this.scale) },
       );
     }
     this.#w0 = w;
     this.#h0 = h;
-  };
+  });
+
+  override connectedCallback(): void {
+    this.#resizeObserver.observe(this);
+    this.#w0 = this.offsetWidth;
+    this.#h0 = this.offsetHeight;
+  }
+
+  disconnectedCallback(): void {
+    this.#resizeObserver.disconnect();
+  }
 
   override attributeChangedCallback(name: string, oldValue: string, newValue: string) {
     if (name === 'pan-x') {
@@ -378,14 +385,6 @@ export class GestureFrame extends ScrollableFrame {
     } else {
       super.attributeChangedCallback(name, oldValue, newValue);
     }
-  }
-
-  override connectedCallback(): void {
-    addEventListener('resize', this.#onResize);
-  }
-
-  disconnectedCallback(): void {
-    removeEventListener('resize', this.#onResize);
   }
 
   constructor() {
