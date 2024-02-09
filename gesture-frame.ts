@@ -356,7 +356,7 @@ export class GestureFrame extends ScrollableFrame {
   });
 
   override connectedCallback(): void {
-    this.#resizeObserver.observe(this);
+    this.#resizeObserver.observe(this, { box: 'border-box' });
     this.#w0 = this.offsetWidth;
     this.#h0 = this.offsetHeight;
   }
