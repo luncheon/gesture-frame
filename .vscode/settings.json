@@ -1,7 +1,4 @@
 {
-  "editor.codeActionsOnSave": {
-    "source.organizeImports": true
-  },
   "editor.formatOnSave": true,
   "[markdown]": {
     "editor.formatOnSave": false
