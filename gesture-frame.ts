@@ -21,6 +21,15 @@ const throttle = (callback: () => void): [() => void, () => void] => {
   ];
 };
 
+const accumulateInverseCssZoom = getComputedStyle(document.documentElement).hasOwnProperty('zoom')
+  ? (element: Element) => {
+      let zoom = 1;
+      // @ts-ignore
+      for (; element; element = element.parentElement) zoom *= getComputedStyle(element).zoom;
+      return 1 / zoom;
+    }
+  : () => 1;
+
 class ScrollableFrame extends HTMLElement {
   static readonly observedAttributes: readonly string[] = ['scale', 'min-scale', 'max-scale', 'offset-x', 'offset-y'];
 
@@ -405,11 +414,16 @@ export class GestureFrame extends ScrollableFrame {
         points = [];
         previousPoint = { x, y, d };
       });
-      const calculatePoint = ({ touches }: TouchEvent): TouchPoint => ({
-        x: averageBy(touches, (touch) => touch.clientX),
-        y: averageBy(touches, (touch) => touch.clientY),
-        d: touches.length > 1 ? Math.hypot(touches[0]!.clientX - touches[1]!.clientX, touches[0]!.clientY - touches[1]!.clientY) : 0,
-      });
+      const calculatePoint = ({ touches }: TouchEvent): TouchPoint => {
+        const inverseCssZoom = accumulateInverseCssZoom(this);
+        const xs = Array.from(touches, (touch) => touch.clientX * inverseCssZoom);
+        const ys = Array.from(touches, (touch) => touch.clientY * inverseCssZoom);
+        return {
+          x: averageBy(xs, (x) => x),
+          y: averageBy(ys, (y) => y),
+          d: touches.length > 1 ? Math.hypot(xs[0]! - xs[1]!, ys[0]! - ys[1]!) : 0,
+        };
+      };
       const onTouchStartEnd = (event: TouchEvent) => {
         cancelPanZoom();
         points = [];
@@ -433,7 +447,8 @@ export class GestureFrame extends ScrollableFrame {
         let clientX: number;
         let clientY: number;
         const [reserveZooming] = throttle(() => {
-          this._zoom(scaleRatio, clientX, clientY);
+          const inverseCssZoom = accumulateInverseCssZoom(this);
+          this._zoom(scaleRatio, clientX * inverseCssZoom, clientY * inverseCssZoom);
           scaleRatio = 1;
         });
         this.addEventListener(
@@ -459,6 +474,7 @@ export class GestureFrame extends ScrollableFrame {
           px: number;
           py: number;
         }[] = [];
+        let inverseCssZoom = 1;
         const [requestPanZoom] = throttle(() => {
           const [p1, p2] = pointers;
           if (p1 && p2 && this.#pinchZoom) {
@@ -489,8 +505,8 @@ export class GestureFrame extends ScrollableFrame {
           const pointer = pointers.find((p) => p.id === event.pointerId);
           if (pointer) {
             (this.#panX || this.#panY || (this.#pinchZoom && pointers.length >= 2)) && event.preventDefault();
-            pointer.cx = event.clientX;
-            pointer.cy = event.clientY;
+            pointer.cx = event.clientX * inverseCssZoom;
+            pointer.cy = event.clientY * inverseCssZoom;
             requestPanZoom();
           }
         };
@@ -509,14 +525,10 @@ export class GestureFrame extends ScrollableFrame {
 
         this.addEventListener('pointerdown', (event) => {
           if (((this.#panX || this.#panY) && event.button === this.#panButton) || (this.#pinchZoom && event.button === 0)) {
-            pointers.push({
-              id: event.pointerId,
-              b: event.button,
-              cx: event.clientX,
-              cy: event.clientY,
-              px: event.clientX,
-              py: event.clientY,
-            });
+            pointers.length === 0 && (inverseCssZoom = accumulateInverseCssZoom(this));
+            const cx = event.clientX * inverseCssZoom;
+            const cy = event.clientY * inverseCssZoom;
+            pointers.push({ id: event.pointerId, b: event.button, cx, cy, px: cx, py: cy });
             addEventListener('pointermove', onPointerMove);
             addEventListener('pointerup', onPointerUp, true);
             addEventListener('pointercancel', onPointerUp, true);
