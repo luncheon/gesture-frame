@@ -1,16 +1,6 @@
 const clamp = (x: number, min: number, max: number) => (x < min ? min : x > max ? max : x);
 const clampZero = (x: number) => (x < 0 ? 0 : x);
-
-const sumBy = <T>(items: ArrayLike<T>, selector: (item: T) => number) => {
-  let sum = 0;
-  for (let i = 0; i < items.length; i++) {
-    sum += selector(items[i]!);
-  }
-  return sum;
-};
-
-const averageBy = <T>(items: ArrayLike<T>, selector: (item: T) => number) =>
-  items.length === 1 ? selector(items[0]!) : sumBy(items, selector) / items.length;
+const preventDefault = (event: Event) => event.preventDefault();
 
 const throttle = (callback: () => void): [() => void, () => void] => {
   let handle: number | undefined;
@@ -23,13 +13,13 @@ const throttle = (callback: () => void): [() => void, () => void] => {
 
 const accumulateInverseCssZoom =
   'zoom' in getComputedStyle(document.documentElement)
-  ? (element: Element) => {
-      let zoom = 1;
-      // @ts-ignore
-      for (; element; element = element.parentElement) zoom *= getComputedStyle(element).zoom;
-      return 1 / zoom;
-    }
-  : () => 1;
+    ? (element: Element) => {
+        let zoom = 1;
+        // @ts-ignore
+        for (; element; element = element.parentElement) zoom *= getComputedStyle(element).zoom;
+        return 1 / zoom;
+      }
+    : () => 1;
 
 class ScrollableFrame extends HTMLElement {
   static readonly observedAttributes: readonly string[] = ['scale', 'min-scale', 'max-scale', 'offset-x', 'offset-y'];
@@ -232,16 +222,6 @@ class ScrollableFrame extends HTMLElement {
   }
 }
 
-interface TouchPoint {
-  readonly x: number;
-  readonly y: number;
-  readonly d: number;
-}
-
-const preventDefault = (event: Event) => event.preventDefault();
-const nonPassive: AddEventListenerOptions = { passive: false };
-const isTouchEventEnabled = typeof ontouchend !== 'undefined';
-
 export class GestureFrame extends ScrollableFrame {
   static override readonly observedAttributes: readonly string[] = [
     ...super.observedAttributes,
@@ -399,143 +379,98 @@ export class GestureFrame extends ScrollableFrame {
 
   constructor() {
     super();
-    if (isTouchEventEnabled) {
-      let previousPoint: TouchPoint = { x: 0, y: 0, d: 0 };
-      let points: TouchPoint[] = [];
-      let multiTouchPanning: boolean | undefined;
-      const [reservePanZoom, cancelPanZoom] = throttle(() => {
-        const x = averageBy(points, (p) => p.x);
-        const y = averageBy(points, (p) => p.y);
-        const d = previousPoint.d && averageBy(points, (p) => p.d);
-        d && this.#pinchZoom && this._zoom(d / previousPoint.d, x, y);
-        this.setOffset(
-          this.#panX || multiTouchPanning ? this.offsetX + x - previousPoint.x : this.offsetX,
-          this.#panY || multiTouchPanning ? this.offsetY + y - previousPoint.y : this.offsetY,
-        );
-        points = [];
-        previousPoint = { x, y, d };
-      });
-      const calculatePoint = ({ touches }: TouchEvent): TouchPoint => {
+    {
+      let scaleRatio = 1;
+      let clientX: number;
+      let clientY: number;
+      const [reserveZooming] = throttle(() => {
         const inverseCssZoom = accumulateInverseCssZoom(this);
-        const xs = Array.from(touches, (touch) => touch.clientX * inverseCssZoom);
-        const ys = Array.from(touches, (touch) => touch.clientY * inverseCssZoom);
-        return {
-          x: averageBy(xs, (x) => x),
-          y: averageBy(ys, (y) => y),
-          d: touches.length > 1 ? Math.hypot(xs[0]! - xs[1]!, ys[0]! - ys[1]!) : 0,
-        };
-      };
-      const onTouchStartEnd = (event: TouchEvent) => {
-        cancelPanZoom();
-        points = [];
-        const touchesLength = event.touches.length;
-        multiTouchPanning = this.#pinchZoom && touchesLength > 1;
-        touchesLength && (previousPoint = calculatePoint(event));
-      };
-      const onTouchMove = (event: TouchEvent) => {
-        if (event.touches.length === 1 ? this.#panX || this.#panY : this.#pinchZoom) {
-          event.preventDefault();
-          points.push(calculatePoint(event));
-          reservePanZoom();
+        this._zoom(scaleRatio, clientX * inverseCssZoom, clientY * inverseCssZoom);
+        scaleRatio = 1;
+      });
+      this.addEventListener(
+        'wheel',
+        (event: WheelEvent) => {
+          if (this.#pinchZoom && event.ctrlKey) {
+            event.preventDefault();
+            scaleRatio *= 0.99 ** event.deltaY;
+            ({ clientX, clientY } = event);
+            reserveZooming();
+          }
+        },
+        { passive: false },
+      );
+    }
+    {
+      // do not use movementX/Y, that do not aware page zoom
+      let pointers: {
+        readonly id: PointerEvent['pointerId'];
+        readonly b: PointerEvent['button'];
+        cx: number;
+        cy: number;
+        px: number;
+        py: number;
+      }[] = [];
+      let inverseCssZoom = 1;
+      const [requestPanZoom] = throttle(() => {
+        const [p1, p2] = pointers;
+        if (p1 && p2 && this.#pinchZoom) {
+          const x = (p1.cx + p2.cx) / 2;
+          const y = (p1.cy + p2.cy) / 2;
+          const cd = Math.hypot(p1.cx - p2.cx, p1.cy - p2.cy);
+          const pd = Math.hypot(p1.px - p2.px, p1.py - p2.py);
+          cd && pd && this._zoom(cd / pd, x, y);
+          this.setOffset(this.offsetX + x - (p1.px + p2.px) / 2, this.offsetY + y - (p1.py + p2.py) / 2);
+        } else if (p1 && (this.#panX || this.#panY) && p1.b === this.#panButton) {
+          this.setOffset(
+            this.#panX ? this.offsetX + p1.cx - p1.px : this.offsetX,
+            this.#panY ? this.offsetY + p1.cy - p1.py : this.offsetY,
+          );
+        }
+        pointers.forEach((pointer) => {
+          pointer.px = pointer.cx;
+          pointer.py = pointer.cy;
+        });
+      });
+      const onPointerMove = (event: PointerEvent) => {
+        // switching tab while dragging prevents handling of pointerup events.
+        if (event.buttons === 0) {
+          pointers = [];
+          removeEventListeners();
+          return;
+        }
+        const pointer = pointers.find((p) => p.id === event.pointerId);
+        if (pointer) {
+          (this.#panX || this.#panY || (this.#pinchZoom && pointers.length >= 2)) && event.preventDefault();
+          pointer.cx = event.clientX * inverseCssZoom;
+          pointer.cy = event.clientY * inverseCssZoom;
+          requestPanZoom();
         }
       };
-      this.addEventListener('touchstart', onTouchStartEnd);
-      this.addEventListener('touchend', onTouchStartEnd);
-      this.addEventListener('touchmove', onTouchMove, nonPassive);
-    } else {
-      {
-        let scaleRatio = 1;
-        let clientX: number;
-        let clientY: number;
-        const [reserveZooming] = throttle(() => {
-          const inverseCssZoom = accumulateInverseCssZoom(this);
-          this._zoom(scaleRatio, clientX * inverseCssZoom, clientY * inverseCssZoom);
-          scaleRatio = 1;
-        });
-        this.addEventListener(
-          'wheel',
-          (event: WheelEvent) => {
-            if (this.#pinchZoom && event.ctrlKey) {
-              event.preventDefault();
-              scaleRatio *= 0.99 ** event.deltaY;
-              ({ clientX, clientY } = event);
-              reserveZooming();
-            }
-          },
-          nonPassive,
-        );
-      }
-      {
-        // do not use movementX/Y, that do not aware page zoom
-        let pointers: {
-          readonly id: PointerEvent['pointerId'];
-          readonly b: PointerEvent['button'];
-          cx: number;
-          cy: number;
-          px: number;
-          py: number;
-        }[] = [];
-        let inverseCssZoom = 1;
-        const [requestPanZoom] = throttle(() => {
-          const [p1, p2] = pointers;
-          if (p1 && p2 && this.#pinchZoom) {
-            const x = (p1.cx + p2.cx) / 2;
-            const y = (p1.cy + p2.cy) / 2;
-            const cd = Math.hypot(p1.cx - p2.cx, p1.cy - p2.cy);
-            const pd = Math.hypot(p1.px - p2.px, p1.py - p2.py);
-            cd && pd && this._zoom(cd / pd, x, y);
-            this.setOffset(this.offsetX + x - (p1.px + p2.px) / 2, this.offsetY + y - (p1.py + p2.py) / 2);
-          } else if (p1 && (this.#panX || this.#panY) && p1.b === this.#panButton) {
-            this.setOffset(
-              this.#panX ? this.offsetX + p1.cx - p1.px : this.offsetX,
-              this.#panY ? this.offsetY + p1.cy - p1.py : this.offsetY,
-            );
-          }
-          pointers.forEach((pointer) => {
-            pointer.px = pointer.cx;
-            pointer.py = pointer.cy;
-          });
-        });
-        const onPointerMove = (event: PointerEvent) => {
-          // switching tab while dragging prevents handling of pointerup events.
-          if (event.buttons === 0) {
-            pointers = [];
-            removeEventListeners();
-            return;
-          }
-          const pointer = pointers.find((p) => p.id === event.pointerId);
-          if (pointer) {
-            (this.#panX || this.#panY || (this.#pinchZoom && pointers.length >= 2)) && event.preventDefault();
-            pointer.cx = event.clientX * inverseCssZoom;
-            pointer.cy = event.clientY * inverseCssZoom;
-            requestPanZoom();
-          }
-        };
-        const onPointerUp = (event: PointerEvent) => {
-          const index = pointers.findIndex((p) => p.id === event.pointerId);
-          if (index !== -1) {
-            pointers.splice(index, 1);
-            pointers.length || removeEventListeners();
-          }
-        };
-        const removeEventListeners = () => {
-          removeEventListener('pointermove', onPointerMove);
-          removeEventListener('pointerup', onPointerUp, true);
-          removeEventListener('pointercancel', onPointerUp, true);
-        };
+      const onPointerUp = (event: PointerEvent) => {
+        const index = pointers.findIndex((p) => p.id === event.pointerId);
+        if (index !== -1) {
+          pointers.splice(index, 1);
+          pointers.length || removeEventListeners();
+        }
+      };
+      const removeEventListeners = () => {
+        removeEventListener('pointermove', onPointerMove);
+        removeEventListener('pointerup', onPointerUp, true);
+        removeEventListener('pointercancel', onPointerUp, true);
+      };
 
-        this.addEventListener('pointerdown', (event) => {
-          if (((this.#panX || this.#panY) && event.button === this.#panButton) || (this.#pinchZoom && event.button === 0)) {
-            pointers.length === 0 && (inverseCssZoom = accumulateInverseCssZoom(this));
-            const cx = event.clientX * inverseCssZoom;
-            const cy = event.clientY * inverseCssZoom;
-            pointers.push({ id: event.pointerId, b: event.button, cx, cy, px: cx, py: cy });
-            addEventListener('pointermove', onPointerMove);
-            addEventListener('pointerup', onPointerUp, true);
-            addEventListener('pointercancel', onPointerUp, true);
-          }
-        });
-      }
+      this.addEventListener('pointerdown', (event) => {
+        if (((this.#panX || this.#panY) && event.button === this.#panButton) || (this.#pinchZoom && event.button === 0)) {
+          pointers.length === 0 && (inverseCssZoom = accumulateInverseCssZoom(this));
+          const cx = event.clientX * inverseCssZoom;
+          const cy = event.clientY * inverseCssZoom;
+          pointers.push({ id: event.pointerId, b: event.button, cx, cy, px: cx, py: cy });
+          addEventListener('pointermove', onPointerMove);
+          addEventListener('pointerup', onPointerUp, true);
+          addEventListener('pointercancel', onPointerUp, true);
+        }
+      });
     }
   }
 }
