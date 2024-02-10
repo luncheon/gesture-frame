@@ -1,3 +1,7 @@
+:where(:root) {
+  zoom: 1;
+}
+
 :where(gesture-frame) {
   touch-action: none;
   display: block;
