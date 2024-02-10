@@ -16,7 +16,7 @@ const throttle = (callback) => {
     () => handle !== void 0 && (cancelAnimationFrame(handle), handle = void 0)
   ];
 };
-const accumulateInverseCssZoom = getComputedStyle(document.documentElement).hasOwnProperty("zoom") ? (element) => {
+const accumulateInverseCssZoom = "zoom" in getComputedStyle(document.documentElement) ? (element) => {
   let zoom = 1;
   for (; element; element = element.parentElement)
     zoom *= getComputedStyle(element).zoom;

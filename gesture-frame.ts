@@ -21,7 +21,8 @@ const throttle = (callback: () => void): [() => void, () => void] => {
   ];
 };
 
-const accumulateInverseCssZoom = getComputedStyle(document.documentElement).hasOwnProperty('zoom')
+const accumulateInverseCssZoom =
+  'zoom' in getComputedStyle(document.documentElement)
   ? (element: Element) => {
       let zoom = 1;
       // @ts-ignore
