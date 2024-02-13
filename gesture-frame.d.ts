@@ -13,7 +13,7 @@ declare class ScrollableFrame extends HTMLElement {
     set offsetY(offsetY: number);
     constructor();
     connectedCallback(): void;
-    attributeChangedCallback(name: string, oldValue: string, newValue: string): void;
+    attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void;
     setOffset(offsetX: number, offsetY: number): void;
     _zoom(scaleRatio: number, originClientX: number, originClientY: number): void;
     /**
@@ -64,7 +64,7 @@ export declare class GestureFrame extends ScrollableFrame {
     set anchorBottom(anchorBottom: boolean);
     connectedCallback(): void;
     disconnectedCallback(): void;
-    attributeChangedCallback(name: string, oldValue: string, newValue: string): void;
+    attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void;
     constructor();
 }
 export {};

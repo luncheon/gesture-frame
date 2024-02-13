@@ -9,10 +9,19 @@ const throttle = (callback) => {
     () => handle !== void 0 && (cancelAnimationFrame(handle), handle = void 0)
   ];
 };
-const accumulateInverseCssZoom = "zoom" in getComputedStyle(document.documentElement) ? (element) => {
+const computedStyleCache = /* @__PURE__ */ new WeakMap();
+const cachedComputedStyle = (element) => {
+  let computedStyle = computedStyleCache.get(element);
+  if (!computedStyle) {
+    computedStyle = getComputedStyle(element);
+    computedStyleCache.set(element, computedStyle);
+  }
+  return computedStyle;
+};
+const accumulateInverseCssZoom = CSS.supports("zoom", "1") ? (element) => {
   let zoom = 1;
   for (; element; element = element.parentElement)
-    zoom *= getComputedStyle(element).zoom;
+    zoom *= cachedComputedStyle(element).zoom;
   return 1 / zoom;
 } : () => 1;
 class ScrollableFrame extends HTMLElement {
@@ -103,8 +112,18 @@ class ScrollableFrame extends HTMLElement {
     this.#setAttribute("max-scale", this.#maxScale);
   }
   attributeChangedCallback(name, oldValue, newValue) {
-    if (this.#isAttributeChangedCallbackEnabled && oldValue !== newValue) {
-      this[name.replace(/-([a-z])/g, (_, $1) => $1.toUpperCase())] = +newValue;
+    if (this.#isAttributeChangedCallbackEnabled && oldValue !== newValue && newValue !== null) {
+      if (name === "offset-x") {
+        this.offsetX = +newValue;
+      } else if (name === "offset-y") {
+        this.offsetY = +newValue;
+      } else if (name === "scale") {
+        this.scale = +newValue;
+      } else if (name === "min-scale") {
+        this.minScale = +newValue;
+      } else if (name === "max-scale") {
+        this.maxScale = +newValue;
+      }
     }
   }
   #memoizedCTMString = "";
@@ -112,14 +131,14 @@ class ScrollableFrame extends HTMLElement {
   #getCTMs() {
     let ctmString = "";
     for (let element = this; element; element = element.parentElement) {
-      const transform = getComputedStyle(element).transform;
+      const transform = cachedComputedStyle(element).transform;
       transform && transform !== "none" && (ctmString = `${transform} ${ctmString}`);
     }
     if (this.#memoizedCTMString !== ctmString) {
       const ctm = new DOMMatrix(ctmString);
       ctm.e = ctm.f = 0;
       this.#memoizedCTMString = ctmString;
-      this.#memoizedCTMs = [DOMMatrixReadOnly.fromMatrix(ctm), DOMMatrixReadOnly.fromMatrix(ctm.inverse())];
+      this.#memoizedCTMs = [ctm, ctm.inverse()];
     }
     return this.#memoizedCTMs;
   }
@@ -155,12 +174,12 @@ class ScrollableFrame extends HTMLElement {
       return;
     }
     const rect = this.getBoundingClientRect();
-    const x = origin?.x;
-    const y = origin?.y;
+    const originX = origin?.x ?? rect.width / 2;
+    const originY = origin?.y ?? rect.height / 2;
     this._zoom(
       scaleRatio,
-      rect.x + (x === void 0 ? rect.width * 0.5 : typeof x === "number" ? x : rect.width * parseFloat(x) * 0.01),
-      rect.y + (y === void 0 ? rect.height * 0.5 : typeof y === "number" ? y : rect.height * parseFloat(y) * 0.01)
+      rect.x + (typeof originX === "number" ? originX : rect.width * parseFloat(originX) * 0.01),
+      rect.y + (typeof originY === "number" ? originY : rect.height * parseFloat(originY) * 0.01)
     );
   }
   /**
